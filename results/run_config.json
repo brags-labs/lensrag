@@ -1,0 +1,55 @@
+{
+  "python": "3.13.5",
+  "platform": "Linux-6.18.57-x86_64-with-glibc2.41",
+  "top_k": 10,
+  "tiers": [
+    "S",
+    "M",
+    "L"
+  ],
+  "token_count_method": "fallback: whitespace words \u00d7 1.33 (estimate)",
+  "corpus_stats": {
+    "S": {
+      "documents": 46,
+      "words": 45069,
+      "characters": 275829,
+      "tokens": 59942
+    },
+    "M": {
+      "documents": 245,
+      "words": 250423,
+      "characters": 1507487,
+      "tokens": 333063
+    },
+    "L": {
+      "documents": 495,
+      "words": 1660802,
+      "characters": 10858332,
+      "tokens": 2208867
+    }
+  },
+  "index_stats": {
+    "S": {
+      "documents": 46,
+      "chunks": 580,
+      "index_build_ms": 126.9388059999983
+    },
+    "M": {
+      "documents": 245,
+      "chunks": 3441,
+      "index_build_ms": 648.6845289999792
+    },
+    "L": {
+      "documents": 495,
+      "chunks": 13187,
+      "index_build_ms": 3667.899119999902
+    }
+  },
+  "methods": [
+    "bm25_topk",
+    "hybrid_topk",
+    "lensrag"
+  ],
+  "seed": 42,
+  "note": "Retrieval-only evaluation; no LLM generation or answer accuracy measured."
+}

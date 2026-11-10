@@ -1,0 +1,782 @@
+[
+ {
+  "id": "HR-CIR-2022-01",
+  "issued": "2022-04-05",
+  "effective": "2022-04-01",
+  "countries": [
+   "ALL"
+  ],
+  "topic": "Launch of Global HR Policy Manual v1.0",
+  "attribute": null,
+  "old": null,
+  "new": null,
+  "kind": "reminder"
+ },
+ {
+  "id": "HR-CIR-2022-02",
+  "issued": "2022-05-16",
+  "effective": "2022-06-01",
+  "countries": [
+   "IN"
+  ],
+  "topic": "Hybrid pilot: two office days a week for Bengaluru and Hyderabad",
+  "attribute": "hybrid_office_days",
+  "old": null,
+  "new": 2,
+  "kind": "change"
+ },
+ {
+  "id": "HR-CIR-2022-03",
+  "issued": "2022-07-04",
+  "effective": "2022-07-15",
+  "countries": [
+   "ALL"
+  ],
+  "topic": "Monsoon and severe-weather work-from-home protocol",
+  "attribute": null,
+  "old": null,
+  "new": null,
+  "kind": "reminder"
+ },
+ {
+  "id": "HR-CIR-2022-04",
+  "issued": "2022-08-22",
+  "effective": "2022-10-01",
+  "countries": [
+   "IN"
+  ],
+  "topic": "Revised night shift allowance",
+  "attribute": "night_shift_allowance_inr",
+  "old": 400,
+  "new": 450,
+  "kind": "interim"
+ },
+ {
+  "id": "HR-CIR-2022-05",
+  "issued": "2022-09-12",
+  "effective": "2022-10-01",
+  "countries": [
+   "ALL"
+  ],
+  "topic": "Annual benefits enrolment window 2022",
+  "attribute": null,
+  "old": null,
+  "new": null,
+  "kind": "reminder"
+ },
+ {
+  "id": "HR-CIR-2022-06",
+  "issued": "2022-10-10",
+  "effective": "2022-11-01",
+  "countries": [
+   "UK"
+  ],
+  "topic": "UK pension employer contribution increase",
+  "attribute": "employer_retirement_contribution_pct",
+  "old": 4,
+  "new": 5,
+  "kind": "change"
+ },
+ {
+  "id": "HR-CIR-2022-07",
+  "issued": "2022-11-21",
+  "effective": "2023-01-01",
+  "countries": [
+   "IN"
+  ],
+  "topic": "Earned leave increase to 18 days",
+  "attribute": "annual_leave_days",
+  "old": 15,
+  "new": 18,
+  "kind": "change"
+ },
+ {
+  "id": "HR-CIR-2022-08",
+  "issued": "2022-12-05",
+  "effective": "2023-01-01",
+  "countries": [
+   "ALL"
+  ],
+  "topic": "Public holiday calendars for 2023",
+  "attribute": null,
+  "old": null,
+  "new": null,
+  "kind": "reminder"
+ },
+ {
+  "id": "HR-CIR-2023-01",
+  "issued": "2023-01-16",
+  "effective": "2023-02-01",
+  "countries": [
+   "ALL"
+  ],
+  "topic": "Work from another country: 10-day allowance introduced",
+  "attribute": "work_from_abroad_days",
+  "old": 0,
+  "new": 10,
+  "kind": "change"
+ },
+ {
+  "id": "HR-CIR-2023-02",
+  "issued": "2023-02-20",
+  "effective": "2023-03-01",
+  "countries": [
+   "IE"
+  ],
+  "topic": "Opening of the Dublin office and Irish entity terms",
+  "attribute": null,
+  "old": null,
+  "new": null,
+  "kind": "reminder"
+ },
+ {
+  "id": "HR-CIR-2023-03",
+  "issued": "2023-03-27",
+  "effective": "2023-04-01",
+  "countries": [
+   "US"
+  ],
+  "topic": "US PTO increase to 18 days",
+  "attribute": "annual_leave_days",
+  "old": 15,
+  "new": 18,
+  "kind": "change"
+ },
+ {
+  "id": "HR-CIR-2023-04",
+  "issued": "2023-05-08",
+  "effective": "2023-06-01",
+  "countries": [
+   "ALL"
+  ],
+  "topic": "Learning budget revision",
+  "attribute": "learning_budget_l1_l3_inr",
+  "old": 15000,
+  "new": 20000,
+  "kind": "change"
+ },
+ {
+  "id": "HR-CIR-2023-05",
+  "issued": "2023-06-19",
+  "effective": "2023-07-01",
+  "countries": [
+   "CA"
+  ],
+  "topic": "Opening of the Toronto office and Canadian entity terms",
+  "attribute": null,
+  "old": null,
+  "new": null,
+  "kind": "reminder"
+ },
+ {
+  "id": "HR-CIR-2023-06",
+  "issued": "2023-07-24",
+  "effective": "2023-08-01",
+  "countries": [
+   "IN"
+  ],
+  "topic": "Night shift allowance raised to ₹500",
+  "attribute": "night_shift_allowance_inr",
+  "old": 450,
+  "new": 500,
+  "kind": "change"
+ },
+ {
+  "id": "HR-CIR-2023-07",
+  "issued": "2023-08-28",
+  "effective": "2023-09-01",
+  "countries": [
+   "SG"
+  ],
+  "topic": "Singapore annual leave increase to 16 days",
+  "attribute": "annual_leave_days",
+  "old": 14,
+  "new": 16,
+  "kind": "change"
+ },
+ {
+  "id": "HR-CIR-2023-08",
+  "issued": "2023-09-18",
+  "effective": "2023-10-01",
+  "countries": [
+   "ALL"
+  ],
+  "topic": "Annual benefits enrolment window 2023",
+  "attribute": null,
+  "old": null,
+  "new": null,
+  "kind": "reminder"
+ },
+ {
+  "id": "HR-CIR-2023-09",
+  "issued": "2023-10-30",
+  "effective": "2024-01-01",
+  "countries": [
+   "ALL"
+  ],
+  "topic": "Global minimum birth-parent leave raised to 14 weeks",
+  "attribute": "global_min_birth_parent_weeks",
+  "old": 12,
+  "new": 14,
+  "kind": "change"
+ },
+ {
+  "id": "HR-CIR-2023-10",
+  "issued": "2023-12-11",
+  "effective": "2024-01-01",
+  "countries": [
+   "ALL"
+  ],
+  "topic": "Launch of Global HR Policy Manual v2.0",
+  "attribute": null,
+  "old": null,
+  "new": null,
+  "kind": "reminder"
+ },
+ {
+  "id": "HR-CIR-2024-01",
+  "issued": "2024-01-22",
+  "effective": "2024-02-01",
+  "countries": [
+   "ALL"
+  ],
+  "topic": "Right to disconnect guidance for managers",
+  "attribute": null,
+  "old": null,
+  "new": null,
+  "kind": "reminder"
+ },
+ {
+  "id": "HR-CIR-2024-02",
+  "issued": "2024-03-04",
+  "effective": "2024-04-01",
+  "countries": [
+   "IN"
+  ],
+  "topic": "Wellbeing allowance raised to ₹10,000",
+  "attribute": "wellbeing_allowance_inr",
+  "old": 8000,
+  "new": 10000,
+  "kind": "interim"
+ },
+ {
+  "id": "HR-CIR-2024-03",
+  "issued": "2024-04-15",
+  "effective": "2024-05-01",
+  "countries": [
+   "UK"
+  ],
+  "topic": "UK flexible working requests from day one",
+  "attribute": null,
+  "old": null,
+  "new": null,
+  "kind": "reminder"
+ },
+ {
+  "id": "HR-CIR-2024-04",
+  "issued": "2024-05-27",
+  "effective": "2024-07-01",
+  "countries": [
+   "ALL"
+  ],
+  "topic": "Remote internet allowance revision",
+  "attribute": "remote_internet_allowance_inr",
+  "old": 1200,
+  "new": 1500,
+  "kind": "change"
+ },
+ {
+  "id": "HR-CIR-2024-05",
+  "issued": "2024-06-24",
+  "effective": "2024-07-01",
+  "countries": [
+   "DE"
+  ],
+  "topic": "Germany holiday entitlement increase to 28 days",
+  "attribute": "annual_leave_days",
+  "old": 27,
+  "new": 28,
+  "kind": "change"
+ },
+ {
+  "id": "HR-CIR-2024-06",
+  "issued": "2024-07-29",
+  "effective": "2024-08-01",
+  "countries": [
+   "ALL"
+  ],
+  "topic": "Phishing simulation and security training cycle",
+  "attribute": null,
+  "old": null,
+  "new": null,
+  "kind": "reminder"
+ },
+ {
+  "id": "HR-CIR-2024-07",
+  "issued": "2024-08-19",
+  "effective": "2024-09-01",
+  "countries": [
+   "IE"
+  ],
+  "topic": "Ireland pension employer contribution to 6%",
+  "attribute": "employer_retirement_contribution_pct",
+  "old": 5,
+  "new": 6,
+  "kind": "change"
+ },
+ {
+  "id": "HR-CIR-2024-08",
+  "issued": "2024-09-16",
+  "effective": "2024-10-01",
+  "countries": [
+   "ALL"
+  ],
+  "topic": "Annual benefits enrolment window 2024",
+  "attribute": null,
+  "old": null,
+  "new": null,
+  "kind": "reminder"
+ },
+ {
+  "id": "HR-CIR-2024-09",
+  "issued": "2024-10-21",
+  "effective": "2024-11-01",
+  "countries": [
+   "IN"
+  ],
+  "topic": "Health insurance sum insured raised to ₹5,00,000",
+  "attribute": "health_sum_insured_inr",
+  "old": 400000,
+  "new": 500000,
+  "kind": "change"
+ },
+ {
+  "id": "HR-CIR-2024-10",
+  "issued": "2024-11-25",
+  "effective": "2025-01-01",
+  "countries": [
+   "US"
+  ],
+  "topic": "US PTO increase to 20 days and 401(k) match to 5%",
+  "attribute": "annual_leave_days",
+  "old": 18,
+  "new": 20,
+  "kind": "change"
+ },
+ {
+  "id": "HR-CIR-2024-11",
+  "issued": "2024-12-09",
+  "effective": "2025-01-01",
+  "countries": [
+   "ALL"
+  ],
+  "topic": "Public holiday calendars for 2025",
+  "attribute": null,
+  "old": null,
+  "new": null,
+  "kind": "reminder"
+ },
+ {
+  "id": "HR-CIR-2025-01",
+  "issued": "2025-01-13",
+  "effective": "2025-02-01",
+  "countries": [
+   "AE"
+  ],
+  "topic": "Opening of the Dubai office and UAE entity terms",
+  "attribute": null,
+  "old": null,
+  "new": null,
+  "kind": "reminder"
+ },
+ {
+  "id": "HR-CIR-2025-02",
+  "issued": "2025-02-24",
+  "effective": "2025-03-01",
+  "countries": [
+   "AU"
+  ],
+  "topic": "Opening of the Sydney office and Australian entity terms",
+  "attribute": null,
+  "old": null,
+  "new": null,
+  "kind": "reminder"
+ },
+ {
+  "id": "HR-CIR-2025-03",
+  "issued": "2025-03-31",
+  "effective": "2025-04-01",
+  "countries": [
+   "ALL"
+  ],
+  "topic": "Work from another country allowance raised to 20 days",
+  "attribute": "work_from_abroad_days",
+  "old": 10,
+  "new": 20,
+  "kind": "change"
+ },
+ {
+  "id": "HR-CIR-2025-04",
+  "issued": "2025-05-05",
+  "effective": "2025-06-01",
+  "countries": [
+   "SG"
+  ],
+  "topic": "Singapore annual leave increase to 18 days",
+  "attribute": "annual_leave_days",
+  "old": 16,
+  "new": 18,
+  "kind": "change"
+ },
+ {
+  "id": "HR-CIR-2025-05",
+  "issued": "2025-06-16",
+  "effective": "2025-07-01",
+  "countries": [
+   "IN"
+  ],
+  "topic": "India paternity leave raised to 10 working days",
+  "attribute": "india_paternity_working_days",
+  "old": 7,
+  "new": 10,
+  "kind": "change"
+ },
+ {
+  "id": "HR-CIR-2025-06",
+  "issued": "2025-07-21",
+  "effective": "2025-08-01",
+  "countries": [
+   "ALL"
+  ],
+  "topic": "Learning budgets revised for all levels",
+  "attribute": "learning_budget_l1_l3_inr",
+  "old": 20000,
+  "new": 25000,
+  "kind": "change"
+ },
+ {
+  "id": "HR-CIR-2025-07",
+  "issued": "2025-08-25",
+  "effective": "2025-09-01",
+  "countries": [
+   "IE"
+  ],
+  "topic": "Ireland annual leave increase to 25 days",
+  "attribute": "annual_leave_days",
+  "old": 23,
+  "new": 25,
+  "kind": "change"
+ },
+ {
+  "id": "HR-CIR-2025-08",
+  "issued": "2025-09-15",
+  "effective": "2025-10-01",
+  "countries": [
+   "ALL"
+  ],
+  "topic": "Annual benefits enrolment window 2025",
+  "attribute": null,
+  "old": null,
+  "new": null,
+  "kind": "reminder"
+ },
+ {
+  "id": "HR-CIR-2025-09",
+  "issued": "2025-10-20",
+  "effective": "2025-11-01",
+  "countries": [
+   "IN"
+  ],
+  "topic": "New employee transport vendor for Bengaluru",
+  "attribute": null,
+  "old": null,
+  "new": null,
+  "kind": "reminder"
+ },
+ {
+  "id": "HR-CIR-2025-10",
+  "issued": "2025-12-01",
+  "effective": "2026-01-01",
+  "countries": [
+   "IN"
+  ],
+  "topic": "Night shift allowance raised to ₹600",
+  "attribute": "night_shift_allowance_inr",
+  "old": 500,
+  "new": 600,
+  "kind": "change"
+ },
+ {
+  "id": "HR-CIR-2025-11",
+  "issued": "2025-12-15",
+  "effective": "2026-01-01",
+  "countries": [
+   "ALL"
+  ],
+  "topic": "Public holiday calendars for 2026",
+  "attribute": null,
+  "old": null,
+  "new": null,
+  "kind": "reminder"
+ },
+ {
+  "id": "HR-CIR-2026-01",
+  "issued": "2026-01-12",
+  "effective": "2026-02-01",
+  "countries": [
+   "ALL"
+  ],
+  "topic": "Global minimum sick leave raised to 10 days",
+  "attribute": "global_min_sick_days",
+  "old": 8,
+  "new": 10,
+  "kind": "change"
+ },
+ {
+  "id": "HR-CIR-2026-02",
+  "issued": "2026-02-02",
+  "effective": "2026-02-15",
+  "countries": [
+   "CA"
+  ],
+  "topic": "Canada sick and personal days raised to 10",
+  "attribute": "paid_sick_days",
+  "old": 7,
+  "new": 10,
+  "kind": "change"
+ },
+ {
+  "id": "HR-CIR-2026-03",
+  "issued": "2026-02-16",
+  "effective": "2026-04-06",
+  "countries": [
+   "UK"
+  ],
+  "topic": "UK statutory sick pay and paternity leave from day one",
+  "attribute": null,
+  "old": null,
+  "new": null,
+  "kind": "change"
+ },
+ {
+  "id": "HR-CIR-2026-04",
+  "issued": "2026-03-02",
+  "effective": "2026-04-01",
+  "countries": [
+   "ALL"
+  ],
+  "topic": "Hybrid office attendance raised to three days a week",
+  "attribute": "hybrid_office_days",
+  "old": 2,
+  "new": 3,
+  "kind": "change"
+ },
+ {
+  "id": "HR-CIR-2026-05",
+  "issued": "2026-03-23",
+  "effective": "2026-04-01",
+  "countries": [
+   "ALL"
+  ],
+  "topic": "Hybrid attendance: transition and exceptions",
+  "attribute": "hybrid_office_days",
+  "old": 2,
+  "new": 3,
+  "kind": "reminder"
+ },
+ {
+  "id": "HR-CIR-2026-06",
+  "issued": "2026-04-20",
+  "effective": "2026-05-11",
+  "countries": [
+   "ALL"
+  ],
+  "topic": "Migration to the new HRMS expense module",
+  "attribute": null,
+  "old": null,
+  "new": null,
+  "kind": "reminder"
+ },
+ {
+  "id": "HR-CIR-2026-07",
+  "issued": "2026-05-18",
+  "effective": "2026-06-01",
+  "countries": [
+   "IN"
+  ],
+  "topic": "Wellbeing allowance raised to ₹12,000",
+  "attribute": "wellbeing_allowance_inr",
+  "old": 10000,
+  "new": 12000,
+  "kind": "change"
+ },
+ {
+  "id": "HR-CIR-2026-08",
+  "issued": "2026-06-08",
+  "effective": "2026-07-01",
+  "countries": [
+   "AU"
+  ],
+  "topic": "Australia Paid Parental Leave rises to 26 weeks",
+  "attribute": null,
+  "old": null,
+  "new": null,
+  "kind": "change"
+ },
+ {
+  "id": "HR-CIR-2026-09",
+  "issued": "2026-06-29",
+  "effective": "2026-07-01",
+  "countries": [
+   "DE"
+  ],
+  "topic": "Germany company pension subsidy raised to 20%",
+  "attribute": "employer_retirement_contribution_pct",
+  "old": 15,
+  "new": 20,
+  "kind": "change"
+ },
+ {
+  "id": "HR-CIR-2026-10",
+  "issued": "2026-07-13",
+  "effective": "2026-08-01",
+  "countries": [
+   "ALL"
+  ],
+  "topic": "Remote cap raised to 20% of business-unit headcount",
+  "attribute": "remote_cap_pct",
+  "old": 15,
+  "new": 20,
+  "kind": "change"
+ },
+ {
+  "id": "HR-CIR-2026-11",
+  "issued": "2026-08-10",
+  "effective": "2026-09-01",
+  "countries": [
+   "CA"
+  ],
+  "topic": "Canada non-birth parent top-up extended to 6 weeks",
+  "attribute": "partner_leave_weeks_full_pay",
+  "old": 4,
+  "new": 6,
+  "kind": "change"
+ },
+ {
+  "id": "HR-CIR-2026-12",
+  "issued": "2026-08-24",
+  "effective": "2026-09-01",
+  "countries": [
+   "ALL"
+  ],
+  "topic": "Correction: India sick leave versus the global minimum",
+  "attribute": "paid_sick_days",
+  "old": 8,
+  "new": 10,
+  "kind": "correction"
+ },
+ {
+  "id": "HR-CIR-2026-13",
+  "issued": "2026-09-14",
+  "effective": "2026-10-01",
+  "countries": [
+   "ALL"
+  ],
+  "topic": "Annual benefits enrolment window 2026",
+  "attribute": null,
+  "old": null,
+  "new": null,
+  "kind": "reminder"
+ },
+ {
+  "id": "HR-CIR-2026-14",
+  "issued": "2026-09-21",
+  "effective": "2027-01-01",
+  "countries": [
+   "IN"
+  ],
+  "topic": "Night shift allowance to rise to ₹700 from January 2027",
+  "attribute": "night_shift_allowance_inr",
+  "old": 600,
+  "new": 700,
+  "kind": "future"
+ },
+ {
+  "id": "HR-CIR-2026-15",
+  "issued": "2026-10-05",
+  "effective": "2027-01-01",
+  "countries": [
+   "UK"
+  ],
+  "topic": "UK annual leave to rise to 27 days from January 2027",
+  "attribute": "annual_leave_days",
+  "old": 25,
+  "new": 27,
+  "kind": "future"
+ },
+ {
+  "id": "HR-CIR-2026-16",
+  "issued": "2026-10-12",
+  "effective": "2027-04-01",
+  "countries": [
+   "SG"
+  ],
+  "topic": "Singapore employer CPF top-up to 18% from April 2027",
+  "attribute": "employer_retirement_contribution_pct",
+  "old": 17,
+  "new": 18,
+  "kind": "future"
+ },
+ {
+  "id": "HR-CIR-2026-17",
+  "issued": "2026-10-19",
+  "effective": "2026-11-01",
+  "countries": [
+   "ALL"
+  ],
+  "topic": "Launch of Global HR Policy Manual v3.0",
+  "attribute": null,
+  "old": null,
+  "new": null,
+  "kind": "reminder"
+ },
+ {
+  "id": "HR-CIR-2026-18",
+  "issued": "2026-10-26",
+  "effective": "2027-01-01",
+  "countries": [
+   "AE"
+  ],
+  "topic": "UAE annual air ticket extended to L4 employees",
+  "attribute": null,
+  "old": null,
+  "new": null,
+  "kind": "future"
+ },
+ {
+  "id": "HR-CIR-2026-19",
+  "issued": "2026-10-28",
+  "effective": "2027-01-01",
+  "countries": [
+   "NL"
+  ],
+  "topic": "Netherlands annual leave to rise to 26 days from January 2027",
+  "attribute": "annual_leave_days",
+  "old": 25,
+  "new": 26,
+  "kind": "future"
+ },
+ {
+  "id": "HR-CIR-2026-20",
+  "issued": "2026-10-30",
+  "effective": "2026-11-01",
+  "countries": [
+   "ALL"
+  ],
+  "topic": "Public holiday calendars for 2027 (provisional)",
+  "attribute": null,
+  "old": null,
+  "new": null,
+  "kind": "reminder"
+ }
+]

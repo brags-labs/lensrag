@@ -1,0 +1,129 @@
+[
+ {
+  "id": "CF-01",
+  "kind": "intra_manual",
+  "description": "Chapter 15.1 (v3.0) gives India 8 paid sick days, below the 10-day global minimum in Chapter 37.1; circular HR-CIR-2026-12 states the global floor applies, so India employees are entitled to 10 days.",
+  "docs": [
+   "POL-v3.0-CH15",
+   "POL-v3.0-CH37",
+   "HR-CIR-2026-12"
+  ],
+  "resolution": 10
+ },
+ {
+  "id": "CF-02",
+  "kind": "future_circular",
+  "description": "Manual v3.0 sets the India night shift allowance at ₹600 per night; HR-CIR-2026-14 raises it to ₹700 only from 1 January 2027.",
+  "docs": [
+   "POL-v3.0-CH12",
+   "HR-CIR-2026-14"
+  ],
+  "resolution": "₹600 until 31 Dec 2026, ₹700 from 1 Jan 2027"
+ },
+ {
+  "id": "CF-03",
+  "kind": "future_circular",
+  "description": "UK annual leave is 25 days in v3.0; HR-CIR-2026-15 raises it to 27 days from 1 January 2027.",
+  "docs": [
+   "POL-v3.0-CH40",
+   "HR-CIR-2026-15"
+  ],
+  "resolution": "25 until 31 Dec 2026, 27 from 1 Jan 2027"
+ },
+ {
+  "id": "CF-04",
+  "kind": "future_circular",
+  "description": "Netherlands annual leave is 25 days in v3.0; HR-CIR-2026-19 raises it to 26 days from 1 January 2027.",
+  "docs": [
+   "POL-v3.0-CH42",
+   "HR-CIR-2026-19"
+  ],
+  "resolution": "25 until 31 Dec 2026, 26 from 1 Jan 2027"
+ },
+ {
+  "id": "CF-05",
+  "kind": "future_circular",
+  "description": "Singapore employer CPF top-up rises from 17% to 18% only from 1 April 2027 (HR-CIR-2026-16).",
+  "docs": [
+   "POL-v3.0-CH44",
+   "HR-CIR-2026-16"
+  ],
+  "resolution": "17% until 31 Mar 2027"
+ },
+ {
+  "id": "CF-06",
+  "kind": "stale_faq",
+  "description": "FAQ-IN-COUNTRY states 7 days of paternity leave (v2.0 value); v3.0 and HR-CIR-2025-05 give 10 working days.",
+  "docs": [
+   "FAQ-IN-COUNTRY",
+   "POL-v3.0-CH16",
+   "HR-CIR-2025-05"
+  ],
+  "resolution": 10
+ },
+ {
+  "id": "CF-07",
+  "kind": "stale_faq",
+  "description": "FAQ-HYBRID still says hybrid employees attend 2 office days a week; HR-CIR-2026-04 and v3.0 require 3 days from 1 April 2026.",
+  "docs": [
+   "FAQ-HYBRID",
+   "POL-v3.0-CH09",
+   "HR-CIR-2026-04"
+  ],
+  "resolution": 3
+ },
+ {
+  "id": "CF-08",
+  "kind": "stale_handbook",
+  "description": "The London office handbook says UK employees receive 23 days' annual leave (v1.0 value); v3.0 gives 25.",
+  "docs": [
+   "HB-LON",
+   "POL-v3.0-CH40"
+  ],
+  "resolution": 25
+ },
+ {
+  "id": "CF-09",
+  "kind": "stale_handbook",
+  "description": "The Pune office handbook lists a ₹500 night shift allowance (v2.0 value); v3.0 gives ₹600.",
+  "docs": [
+   "HB-PNQ",
+   "POL-v3.0-CH12",
+   "HR-CIR-2025-10"
+  ],
+  "resolution": 600
+ },
+ {
+  "id": "CF-10",
+  "kind": "stale_benefits",
+  "description": "The Singapore benefits summary says 16 days' annual leave (v2.0 value); v3.0 and HR-CIR-2025-04 give 18.",
+  "docs": [
+   "BEN-SG",
+   "POL-v3.0-CH44",
+   "HR-CIR-2025-04"
+  ],
+  "resolution": 18
+ },
+ {
+  "id": "CF-11",
+  "kind": "version",
+  "description": "Hybrid office days: 2 (v1.0, v2.0) vs 3 (v3.0). Legitimate update, not a conflict.",
+  "docs": [
+   "POL-v1.0-CH09",
+   "POL-v2.0-CH09",
+   "POL-v3.0-CH09"
+  ],
+  "resolution": 3
+ },
+ {
+  "id": "CF-12",
+  "kind": "version",
+  "description": "Work from another country: not permitted (v1.0), 10 days (v2.0), 20 days (v3.0). Legitimate update.",
+  "docs": [
+   "POL-v1.0-CH10",
+   "POL-v2.0-CH10",
+   "POL-v3.0-CH10"
+  ],
+  "resolution": 20
+ }
+]

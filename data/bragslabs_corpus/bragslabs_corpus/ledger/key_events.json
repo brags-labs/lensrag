@@ -1,0 +1,27 @@
+{
+ "hybrid_3_days": {
+  "announced": "2026-03-02",
+  "effective": "2026-04-01",
+  "circular": "HR-CIR-2026-04"
+ },
+ "expense_migration": {
+  "effective": "2026-05-11",
+  "circular": "HR-CIR-2026-06"
+ },
+ "india_night_600": {
+  "effective": "2026-01-01",
+  "circular": "HR-CIR-2025-10"
+ },
+ "uk_ssp_day_one": {
+  "effective": "2026-04-06",
+  "circular": "HR-CIR-2026-03"
+ },
+ "au_ppl_26": {
+  "effective": "2026-07-01",
+  "circular": "HR-CIR-2026-08"
+ },
+ "blr_transport_vendor": {
+  "effective": "2025-11-01",
+  "circular": "HR-CIR-2025-09"
+ }
+}

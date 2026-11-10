@@ -1,0 +1,31 @@
+{
+  "python": "3.13.5",
+  "platform": "Linux-6.18.57-x86_64-with-glibc2.41",
+  "top_k": 10,
+  "tiers": [
+    "M"
+  ],
+  "token_count_method": "fallback: whitespace words \u00d7 1.33 (estimate)",
+  "corpus_stats": {
+    "M": {
+      "documents": 245,
+      "words": 250423,
+      "characters": 1507487,
+      "tokens": 333063
+    }
+  },
+  "index_stats": {
+    "M": {
+      "documents": 245,
+      "chunks": 3433,
+      "index_build_ms": 612.0446859999902
+    }
+  },
+  "methods": [
+    "bm25_topk",
+    "hybrid_topk",
+    "lensrag"
+  ],
+  "seed": 42,
+  "note": "Retrieval-only evaluation; no LLM generation or answer accuracy measured."
+}
