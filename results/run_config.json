@@ -1,55 +1,104 @@
 {
   "python": "3.13.5",
-  "platform": "Linux-6.18.57-x86_64-with-glibc2.41",
+  "platform": "macOS-26.6.2-arm64-arm-64bit-Mach-O",
   "top_k": 10,
   "tiers": [
     "S",
     "M",
     "L"
   ],
-  "token_count_method": "fallback: whitespace words \u00d7 1.33 (estimate)",
+  "token_count_method": "tiktoken cl100k_base",
   "corpus_stats": {
     "S": {
       "documents": 46,
       "words": 45069,
       "characters": 275829,
-      "tokens": 59942
+      "tokens": 59912
     },
     "M": {
       "documents": 245,
       "words": 250423,
       "characters": 1507487,
-      "tokens": 333063
+      "tokens": 335180
     },
     "L": {
       "documents": 495,
       "words": 1660802,
       "characters": 10858332,
-      "tokens": 2208867
+      "tokens": 2572335
     }
   },
   "index_stats": {
     "S": {
       "documents": 46,
       "chunks": 580,
-      "index_build_ms": 126.9388059999983
+      "index_build_ms": 587.5844170805067,
+      "corpus_tokens": 59912,
+      "long_context_docs_packed": {
+        "long_context_128k": 46,
+        "long_context_1m": 46,
+        "long_context_full": 46
+      },
+      "source": "chroma",
+      "load_or_build_chunks_ms": 526.405791984871,
+      "in_memory_index_ms": 61.17862509563565
     },
     "M": {
       "documents": 245,
       "chunks": 3441,
-      "index_build_ms": 648.6845289999792
+      "index_build_ms": 632.6100409496576,
+      "corpus_tokens": 335180,
+      "long_context_docs_packed": {
+        "long_context_128k": 89,
+        "long_context_1m": 245,
+        "long_context_full": 245
+      },
+      "source": "chroma",
+      "load_or_build_chunks_ms": 241.4303330006078,
+      "in_memory_index_ms": 391.17970794904977
     },
     "L": {
       "documents": 495,
       "chunks": 13187,
-      "index_build_ms": 3667.899119999902
+      "index_build_ms": 2931.207500048913,
+      "corpus_tokens": 2572335,
+      "long_context_docs_packed": {
+        "long_context_128k": 76,
+        "long_context_1m": 357,
+        "long_context_full": 495
+      },
+      "source": "chroma",
+      "load_or_build_chunks_ms": 1167.938083061017,
+      "in_memory_index_ms": 1763.269416987896
     }
   },
   "methods": [
     "bm25_topk",
     "hybrid_topk",
-    "lensrag"
+    "lensrag",
+    "lensrag_rerank",
+    "long_context_128k",
+    "long_context_1m",
+    "long_context_full"
   ],
+  "long_context": {
+    "windows": {
+      "long_context_128k": 128000,
+      "long_context_1m": 1000000,
+      "long_context_full": null
+    },
+    "prompt_reserve_tokens": 4000,
+    "packing": "whole documents in corpus (manifest) order until the window is full"
+  },
+  "domain": "hr",
+  "domain_config": "/Users/gautampandey/learn/capstone/lensrag/lensrag/domains/hr.yaml",
+  "semantic": "tfidf",
+  "embedding_model": null,
+  "store": "/Users/gautampandey/learn/capstone/lensrag/artifacts/chroma",
+  "relevance_judge": {
+    "model": "cross-encoder/ms-marco-MiniLM-L-6-v2",
+    "threshold": -4.0
+  },
   "seed": 42,
-  "note": "Retrieval-only evaluation; no LLM generation or answer accuracy measured."
+  "note": "Retrieval-level evaluation. Answer-level metrics (exact match, set F1, faithfulness) come from `lensrag.cli answers`, which needs an LLM."
 }

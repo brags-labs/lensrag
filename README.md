@@ -36,6 +36,14 @@ python -m lensrag.cli report --input results/metrics.csv --output results/report
 
 The CLI extracts the corpus archive to `data/extracted/` on first run. It never modifies the source ZIP.
 
+## Persistent index (ChromaDB)
+Chunks, metadata and optional dense vectors are stored in ChromaDB under `artifacts/` and reused until the corpus changes. Add `--semantic dense` to `run` to fuse BM25 with sentence-transformer embeddings instead of TF-IDF. See `docs/INDEX_STORAGE.md` for what is stored, rebuild rules and setup steps.
+
+The algorithm itself is explained with a worked example in `docs/LENSRAG_ALGORITHM.md`. For a step-by-step comparison of the documented LensRAG algorithm with this code, see `docs/ALGORITHM_COMPARISON.md`.
+
+## Other domains
+Entities, metadata fields, status words and record types are declared in a domain config (`lensrag/domains/hr.yaml` is the default; `legal.yaml` is an example). Use `--domain` and `--corpus` to index any folder of Markdown/text documents, and `python -m lensrag.cli entities` to list the entity types and entities found. See `docs/DOMAINS.md`.
+
 ## Optional dense embeddings
 The default hybrid experiment uses BM25 + word TF-IDF so it runs on CPU without model downloads or API credentials. For a production-like dense retrieval extension, install:
 ```bash

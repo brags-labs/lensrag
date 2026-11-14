@@ -218,3 +218,8 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# LensRAG persistent indexes (ChromaDB)
+artifacts/
+
+data/extracted/
