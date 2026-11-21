@@ -1,0 +1,83 @@
+# BragsLabs HR policy corpus. This file reproduces LensRAG's original HR behaviour.
+name: hr
+description: HR policies, circulars, handbooks and employee records across countries and offices.
+
+# Front-matter field for each generic role (role: field). Unlisted roles use the role name.
+fields:
+  doc_id: doc_id
+  doc_type: doc_type
+  title: title
+  version: version
+  effective_date: effective_date
+  status: status
+  period: period
+# Alternative front-matter names that fill a field when it is missing.
+field_aliases:
+  employee_category: [employee_group, employee_type]
+# Values used when a document has no such field.
+defaults:
+  country: ALL
+  doc_type: unknown
+# Field values meaning "applies to every entity"; such documents are in every entity's scope.
+global_values: [ALL, GLOBAL, ""]
+status:
+  active: [current, in force, ""]
+  pending: [announced]
+  superseded: [superseded]
+# Regex that marks a question as naming policy versions ("version 2.0", "v3.0").
+version_terms: '\bversions?\b|\bv\d'
+
+# Entity types, highest priority first: a question is decomposed over the first type it is
+# about (its topic matches or it names values of that type); corpus-wide questions about
+# nothing in particular fan out over the default_fanout type.
+entity_types:
+  - name: office
+    plural: offices
+    topic: '\boffices\b|\bwhich office\b'
+    from_title:
+      doc_types: [office_handbook]
+      pattern: '^(.*?)\s+office handbook'
+    parent: country
+  - name: country
+    plural: countries
+    field: country
+    default_fanout: true
+    in_header: true
+    names:
+      AE: United Arab Emirates
+      AU: Australia
+      CA: Canada
+      DE: Germany
+      IE: Ireland
+      IN: India
+      NL: Netherlands
+      SG: Singapore
+      UK: United Kingdom
+      US: United States
+    aliases:
+      UK: United Kingdom
+      U.K.: United Kingdom
+      US: United States
+      U.S.: United States
+      USA: United States
+      UAE: United Arab Emirates
+
+# Record-style document types, and the words that mean a question is about them. Questions
+# that mention none of them exclude these types; questions that do are restricted to them.
+record_types:
+  helpdesk_ticket_log: '\btickets?\b|helpdesk|csat|resolution time'
+  grievance_register: 'grievance|internal committee|\bupheld\b|complaints?\b'
+  exit_interview_notes: '\bexit|rejoin|leavers?\b'
+  survey_comments: '\bsurvey|\bpulse\b|\benps\b'
+
+# Extra domain phrasings for the keyword classifier (the full runtime asks an LLM first).
+type_hints:
+  temporal: ['^\s*(list|which) .*circulars']
+  sentiment_shift: ['share of exits.*change']
+
+# Chunk header: {field} is a metadata value ('unspecified' if empty); {title_or_id},
+# {section} and {entities} are computed.
+header: >-
+  Document: {title_or_id} [{doc_id}] | Type: {doc_type} | Section: {section} | Scope: {country} |
+  Employee category: {employee_category} | Version: {version} | Effective date: {effective_date} |
+  Status: {status} | Entities: {entities} | Period: {period}

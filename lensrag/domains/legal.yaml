@@ -1,0 +1,62 @@
+# Example domain: commercial contracts, amendments and case notes.
+# Point LensRAG at a folder of .md/.txt files whose front matter uses these fields:
+#   python -m lensrag.cli entities --domain legal --corpus path/to/docs
+name: legal
+description: commercial contracts, amendments and case notes across jurisdictions and counterparties
+fields:
+  doc_id: doc_id
+  doc_type: doc_type
+  title: title
+  version: version
+  effective_date: effective_date
+  status: status
+  period: period
+defaults:
+  jurisdiction: ALL
+  doc_type: unknown
+# Group-wide standards apply in every jurisdiction.
+global_values: [ALL, ""]
+status:
+  active: [in force, executed, current, ""]
+  pending: [signed, pending, announced]
+  superseded: [superseded, terminated, expired, repealed]
+version_terms: '\bversions?\b|\bamendments?\b|\bv\d'
+
+entity_types:
+  # A question naming a counterparty, or asking "which parties/vendors", is decomposed by party.
+  - name: party
+    plural: parties
+    field: parties
+    multi: true            # front matter: parties: BragsLabs; Acme Corp
+    match_partial: true    # "Acme" in a question matches the party "Acme Corp"
+    ignore: [BragsLabs]    # our own company is a party to everything, so it is not a counterparty
+    topic: '\bparties\b|\bcounterpart(y|ies)\b|\bvendors?\b|\bsuppliers?\b|\bwhich (party|customer)\b'
+  # Corpus-wide questions fan out by jurisdiction.
+  - name: jurisdiction
+    plural: jurisdictions
+    field: jurisdiction
+    default_fanout: true
+    in_header: true
+    names:
+      US-NY: New York
+      US-DE: Delaware
+      UK-EW: England and Wales
+      SG: Singapore
+      IN: India
+    aliases:
+      NY: New York
+      England: England and Wales
+
+# Other things questions select ("which contracts ..."), for the keyword classifier.
+item_nouns: [contracts, agreements, clauses]
+
+# Case notes are only searched when a question is about cases or courts.
+record_types:
+  case_note: '\bcases?\b|\bjudgments?\b|\bcourts?\b|\bruled\b'
+
+type_hints:
+  version_diff: ['\bamend(ed|ment)\b.*\bchang']
+
+header: >-
+  Document: {title_or_id} [{doc_id}] | Type: {doc_type} | Section: {section} | Jurisdiction: {jurisdiction} |
+  Parties: {parties} | Version: {version} | Effective date: {effective_date} | Status: {status} | Entities: {entities}

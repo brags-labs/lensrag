@@ -1,0 +1,74 @@
+{
+  "python": "3.13.5",
+  "platform": "macOS-26.6.2-arm64-arm-64bit-Mach-O",
+  "top_k": 10,
+  "tiers": [
+    "S",
+    "M",
+    "L"
+  ],
+  "token_count_method": "fallback: whitespace words \u00d7 1.33 (estimate)",
+  "corpus_stats": {
+    "S": {
+      "documents": 46,
+      "words": 45069,
+      "characters": 275829,
+      "tokens": 59942
+    },
+    "M": {
+      "documents": 245,
+      "words": 250423,
+      "characters": 1507487,
+      "tokens": 333063
+    },
+    "L": {
+      "documents": 495,
+      "words": 1660802,
+      "characters": 10858332,
+      "tokens": 2208867
+    }
+  },
+  "index_stats": {
+    "S": {
+      "documents": 46,
+      "chunks": 580,
+      "index_build_ms": 465.72170895524323,
+      "source": "chroma",
+      "load_or_build_chunks_ms": 439.1115839825943,
+      "in_memory_index_ms": 26.61012497264892
+    },
+    "M": {
+      "documents": 245,
+      "chunks": 3441,
+      "index_build_ms": 526.6490839421749,
+      "source": "chroma",
+      "load_or_build_chunks_ms": 290.87304195854813,
+      "in_memory_index_ms": 235.77604198362678
+    },
+    "L": {
+      "documents": 495,
+      "chunks": 13187,
+      "index_build_ms": 2377.6173749938607,
+      "source": "chroma",
+      "load_or_build_chunks_ms": 1557.1326659992337,
+      "in_memory_index_ms": 820.484708994627
+    }
+  },
+  "methods": [
+    "bm25_topk",
+    "hybrid_topk",
+    "lensrag",
+    "lensrag_rerank"
+  ],
+  "domain": "hr",
+  "domain_config": "/Users/gautampandey/learn/capstone/lensrag/lensrag/domains/hr.yaml",
+  "semantic": "dense",
+  "embedding_model": "sentence-transformers/all-MiniLM-L6-v2",
+  "store": "/Users/gautampandey/learn/capstone/lensrag/artifacts/chroma",
+  "relevance_judge": {
+    "model": "cross-encoder/ms-marco-MiniLM-L-6-v2",
+    "threshold": -4.0
+  },
+  "seed": 42,
+  "note": "Retrieval-only evaluation; no LLM generation or answer accuracy measured."
+}
