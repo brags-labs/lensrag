@@ -1,6 +1,6 @@
 # LensRAG algorithm, explained with a worked example
 
-> Source: the group's methodology report, `MTechPESJan25AGrp5_1.pdf` (Section 1.1.1 and Figures 1.1–1.2). The figures in the example are fictional and only illustrate the algorithm; they are not findings from the BragsLabs corpus. For how the Python code implements each step, see [`ALGORITHM_COMPARISON.md`](ALGORITHM_COMPARISON.md).
+> Source: the group's methodology report, `MTechPESJan25AGrp5_1.pdf` (Section 1.1.1 and Figures 1.1–1.2). The figures in the example are fictional and only illustrate the algorithm; they are not findings from the BragsLabs corpus. For how the Python code implements each step, see [`FULL_RUNTIME_GUIDE.md`](FULL_RUNTIME_GUIDE.md).
 
 Think of LensRAG as a system that:
 
@@ -317,4 +317,4 @@ This is also what separates LensRAG from RAPTOR. RAPTOR organises information as
 
 ## Note on implementation status
 
-The methodology report describes the proposed architecture. It does not by itself show that every component has been implemented and validated in the Python project. The code is assessed against these steps separately in [`ALGORITHM_COMPARISON.md`](ALGORITHM_COMPARISON.md), and measured results are in `results/hypotheses.md`. Step 7's three modes are implemented in the full runtime (`aggregation.py`, `estimation.py`, `synthesis.py`, `full/pipeline.py`) and tested with stand-in LLMs; their quality with a real LLM is not yet measured.
+The methodology report describes the proposed architecture. It does not by itself show that every component has been implemented and validated in the Python project. The implementation is described in [`FULL_RUNTIME_GUIDE.md`](FULL_RUNTIME_GUIDE.md), and measured results are in `results/hypotheses.md`. Step 7's three modes are implemented in the full runtime (`aggregation.py`, `estimation.py`, `synthesis.py`, `full/pipeline.py`) and tested with stand-in LLMs; their quality with a real LLM is not yet measured.
