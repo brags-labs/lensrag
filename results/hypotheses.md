@@ -110,28 +110,28 @@ Not measured: whether a model actually uses evidence placed in a long context (n
 
 | Tier | Method | Scope | Context tokens | p50 ms | p95 ms |
 |---|---|---|---:|---:|---:|
-| L | bm25_topk | global | 2,507 | 2.0 | 2.5 |
-| L | bm25_topk | local | 1,766 | 2.3 | 2.8 |
-| L | hybrid_topk | global | 2,279 | 9.4 | 10.4 |
-| L | hybrid_topk | local | 1,712 | 10.1 | 10.8 |
-| L | lensrag | global | 7,740 | 55.9 | 113.5 |
-| L | lensrag | local | 970 | 6.4 | 7.5 |
-| L | lensrag_rerank | global | 19,852 | 426.1 | 1271.9 |
-| L | lensrag_rerank | local | 3,667 | 75.1 | 87.0 |
+| L | bm25_topk | global | 2,507 | 1.8 | 2.2 |
+| L | bm25_topk | local | 1,766 | 2.0 | 2.2 |
+| L | hybrid_topk | global | 2,279 | 8.4 | 9.0 |
+| L | hybrid_topk | local | 1,712 | 8.5 | 8.8 |
+| L | lensrag | global | 7,740 | 52.6 | 106.8 |
+| L | lensrag | local | 970 | 6.1 | 6.4 |
+| L | lensrag_rerank | global | 19,852 | 403.9 | 1195.7 |
+| L | lensrag_rerank | local | 3,667 | 67.5 | 77.8 |
 | L | long_context_128k | global | 122,456 | 0.0 | 0.0 |
 | L | long_context_128k | local | 122,456 | 0.0 | 0.0 |
 | L | long_context_1m | global | 994,634 | 0.0 | 0.0 |
 | L | long_context_1m | local | 994,634 | 0.0 | 0.0 |
 | L | long_context_full | global | 2,572,335 | 0.0 | 0.0 |
 | L | long_context_full | local | 2,572,335 | 0.0 | 0.0 |
-| M | bm25_topk | global | 1,831 | 0.5 | 0.7 |
-| M | bm25_topk | local | 1,539 | 0.6 | 0.8 |
-| M | hybrid_topk | global | 1,649 | 2.1 | 2.5 |
-| M | hybrid_topk | local | 1,501 | 2.2 | 2.6 |
-| M | lensrag | global | 5,982 | 23.1 | 47.8 |
-| M | lensrag | local | 885 | 2.8 | 3.0 |
-| M | lensrag_rerank | global | 8,956 | 331.1 | 709.1 |
-| M | lensrag_rerank | local | 3,559 | 57.1 | 66.8 |
+| M | bm25_topk | global | 1,831 | 0.4 | 0.6 |
+| M | bm25_topk | local | 1,539 | 0.5 | 0.6 |
+| M | hybrid_topk | global | 1,649 | 1.8 | 2.1 |
+| M | hybrid_topk | local | 1,501 | 2.0 | 2.1 |
+| M | lensrag | global | 5,982 | 20.0 | 42.5 |
+| M | lensrag | local | 885 | 2.4 | 2.6 |
+| M | lensrag_rerank | global | 8,956 | 303.1 | 628.6 |
+| M | lensrag_rerank | local | 3,559 | 55.0 | 63.3 |
 | M | long_context_128k | global | 122,741 | 0.0 | 0.0 |
 | M | long_context_128k | local | 122,741 | 0.0 | 0.0 |
 | M | long_context_1m | global | 335,180 | 0.0 | 0.0 |
@@ -140,12 +140,12 @@ Not measured: whether a model actually uses evidence placed in a long context (n
 | M | long_context_full | local | 335,180 | 0.0 | 0.0 |
 | S | bm25_topk | global | 2,696 | 0.2 | 0.2 |
 | S | bm25_topk | local | 2,689 | 0.2 | 0.3 |
-| S | hybrid_topk | global | 2,704 | 0.6 | 0.8 |
-| S | hybrid_topk | local | 2,718 | 0.7 | 0.9 |
-| S | lensrag | global | 9,363 | 7.2 | 8.0 |
-| S | lensrag | local | 1,168 | 1.0 | 1.7 |
-| S | lensrag_rerank | global | 6,740 | 251.2 | 356.8 |
-| S | lensrag_rerank | local | 3,581 | 48.5 | 76.1 |
+| S | hybrid_topk | global | 2,704 | 0.6 | 0.6 |
+| S | hybrid_topk | local | 2,718 | 0.7 | 1.1 |
+| S | lensrag | global | 9,363 | 6.2 | 7.2 |
+| S | lensrag | local | 1,168 | 0.9 | 1.8 |
+| S | lensrag_rerank | global | 6,740 | 229.7 | 349.4 |
+| S | lensrag_rerank | local | 3,581 | 47.7 | 117.1 |
 | S | long_context_128k | global | 59,912 | 0.0 | 0.0 |
 | S | long_context_128k | local | 59,912 | 0.0 | 0.0 |
 | S | long_context_1m | global | 59,912 | 0.0 | 0.0 |
@@ -153,7 +153,7 @@ Not measured: whether a model actually uses evidence placed in a long context (n
 | S | long_context_full | global | 59,912 | 0.0 | 0.0 |
 | S | long_context_full | local | 59,912 | 0.0 | 0.0 |
 
-**Answer level: not measured.** H2 is stated in terms of set-level F1 and exact-match accuracy of the *answers*. No LLM was configured for this run, so `answers.csv` does not exist. Set `OPENAI_API_KEY` (or `OPENAI_BASE_URL` for a compatible local server) and rerun `RUN_EXPERIMENT.sh`.
+**Answer level: not measured.** H2 is stated in terms of set-level F1 and exact-match accuracy of the *answers*. No LLM was configured for this run, so `answers.csv` does not exist. Set `ANTHROPIC_API_KEY` (Claude) or `OPENAI_API_KEY` and rerun `RUN_EXPERIMENT.sh`.
 
 ## H3: completeness and conflict checks flag incomplete or conflicting answers
 

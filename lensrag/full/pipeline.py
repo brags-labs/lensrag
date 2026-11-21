@@ -15,6 +15,7 @@ from ..synthesis import consistent_insights
 from ..retrieval import coverage_retrieve
 from .index import DenseEncoder, PersistentHybridIndex, corpus_fingerprint
 from .providers import create_llm
+from .routing import role as _role
 
 @dataclass
 class PipelineConfig:
@@ -24,7 +25,8 @@ class PipelineConfig:
     index_dir: str = "artifacts/index_L"
     embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2"
     llm_model: str | None = None     # None = the provider's default (claude-opus-5-5 / gpt-4o-mini)
-    llm_provider: str | None = None  # anthropic | openai | auto (see full/providers.py)
+    llm_provider: str | None = None  # anthropic | openai | ollama | auto (see full/providers.py)
+    llm_stack: str | None = None     # per-stage model preset, e.g. local-qwen (see full/routing.py)
     page_size: int = 5              # chunks fetched per entity scope per round
     adaptive_round_limit: int = 4   # safety cap; the loop normally stops when no new relevant evidence appears
     allow_lexical_fallback: bool = False
@@ -57,7 +59,7 @@ class LensRAGPipeline:
         idx=PersistentHybridIndex(chunks,encoder=encoder)
         fp=corpus_fingerprint(chunks); idx.save(cfg.index_dir,fp)
         inventory=build_inventory(docs,domain)
-        llm=create_llm(cfg.llm_provider,cfg.llm_model) if use_llm else None
+        llm=create_llm(cfg.llm_provider,cfg.llm_model,cfg.llm_stack) if use_llm else None
         Path(cfg.index_dir).joinpath("entities.json").write_text(json.dumps(inventory,indent=2),encoding="utf-8")
         return cls(idx,inventory,llm,cfg)
 
@@ -68,7 +70,7 @@ class LensRAGPipeline:
         inventory=json.loads(ep.read_text()) if ep.exists() else None
         if not isinstance(inventory,dict) or "entities" not in inventory:  # missing or an older format
             inventory=build_inventory(idx.chunks,load_domain(cfg.domain))
-        llm=create_llm(cfg.llm_provider,cfg.llm_model) if use_llm else None
+        llm=create_llm(cfg.llm_provider,cfg.llm_model,cfg.llm_stack) if use_llm else None
         return cls(idx,inventory,llm,cfg)
 
     def ask(self, question: str):
@@ -119,7 +121,7 @@ class LensRAGPipeline:
         """LLM classification and parameters; the rule-based planner fills or replaces invalid fields."""
         entities=self.inventory.get("entities",{})
         by_name={t:{e["name"]:e["value"] for e in items} for t,items in entities.items()}
-        out=self.llm.json(
+        out=_role(self.llm,"classify").json(
             f"Classify a question about this corpus ({self.domain.description or self.domain.name}) and extract its parameters. "
             "Return JSON {qtype, named, excluded, versions, direction, k, threshold, comparator}. qtype is one of: "+", ".join(QUERY_TYPES)+". "
             "local = one fact from one or few passages; count = how many entities; extremum = single highest/lowest; "
@@ -161,7 +163,7 @@ class LensRAGPipeline:
                        "scope's entity (all entities when the scope is 'all'). Do not infer missing facts.")
             else:
                 task+="Return empty records lists."
-            out=self.llm.json(task,json.dumps({"question":question,"scope":scope.label,"passages":passages}))
+            out=_role(self.llm,"extract").json(task,json.dumps({"question":question,"scope":scope.label,"passages":passages}))
             verdicts={v.get("index"):v for v in out.get("passages",[]) if isinstance(v,dict)}
             kept=[]
             for i,(c,s) in enumerate(items):
@@ -203,7 +205,7 @@ class LensRAGPipeline:
         for c,_,label,_ in hits: by_scope[label].append(c)
         mapped=[]
         for label,chunks in by_scope.items():
-            out=self.llm.json("For each passage, list the query-relevant themes or categories as short labels, its sentiment "
+            out=_role(self.llm,"map").json("For each passage, list the query-relevant themes or categories as short labels, its sentiment "
                               "(positive|negative|neutral|mixed|null) and a verbatim evidence_span. Return JSON {items:[{index, labels:[], "
                               "sentiment, evidence_span}]}. Do not invent.",
                               json.dumps({"question":question,"scope":label,"passages":[{"index":i,"period":c.period,"passage":c.text} for i,c in enumerate(chunks)]}))
@@ -229,7 +231,7 @@ class LensRAGPipeline:
         """Mode C, reduce: k independent runs; keep insights most runs agree on, with support and citations."""
         notes=[{"entity":r.get("entity"),"period":r.get("period"),"value":r.get("value"),"doc_id":r.get("doc_id"),
                 "evidence_span":r.get("evidence_span")} for r in records[:150]]
-        return consistent_insights(self.llm,question,notes,stats,evidence_doc_ids,k=self.config.reduce_runs,
+        return consistent_insights(_role(self.llm,"reduce"),question,notes,stats,evidence_doc_ids,k=self.config.reduce_runs,
                                    threshold=self.config.support_threshold,max_insights=plan.k or 5)
 
     def _estimate(self, question, plan, scopes):
@@ -295,9 +297,9 @@ class LensRAGPipeline:
         user=json.dumps({"question":question,"scope":scope_label,"records":[{"index":i,"period":c.period,"text":c.text}
                                                                             for i,c in enumerate(batch)]},ensure_ascii=False)
         try:
-            out=self.llm.json(system,user,temperature=1.0 if run else 0)
+            out=_role(self.llm,"extract").json(system,user,temperature=1.0 if run else 0)
         except TypeError:
-            out=self.llm.json(system,user)
+            out=_role(self.llm,"extract").json(system,user)
         got={r.get("index"):r for r in (out or {}).get("records",[]) if isinstance(r,dict)}
         return [got.get(i,{}) for i in range(len(batch))]
 
@@ -352,11 +354,11 @@ class LensRAGPipeline:
     # --- step 9 helpers -------------------------------------------------------------------
     def _generate_local(self,q,hits):
         evidence=[{"doc_id":c.doc_id,"path":c.path,"version":c.version,"status":c.status,"effective_date":c.effective_date,"text":c.text} for c,*_ in hits]
-        return self.llm.text("Answer only from supplied evidence. Cite every material claim using [doc_id]. If evidence is insufficient, say so. "
+        return _role(self.llm,"answer").text("Answer only from supplied evidence. Cite every material claim using [doc_id]. If evidence is insufficient, say so. "
                              "Prefer current/in-force documents; mention superseded or announced values when they differ.",json.dumps({"question":q,"evidence":evidence}))
 
     def _write(self,q,plan,mode,records,aggregate,estimate,synthesis,flags):
-        return self.llm.text("Write the answer from the computed results only; they are authoritative. Label every statement: "
+        return _role(self.llm,"answer").text("Write the answer from the computed results only; they are authoritative. Label every statement: "
                              "[exact] for results computed from all the evidence, [estimated] for sampled estimates (always give the "
                              "95% interval and the sample size), [generated] for insights (give their support, e.g. 4/5 runs, and "
                              "call 'hypothesis' insights tentative). Use only numbers present in the results; never compute new ones. "
@@ -370,7 +372,7 @@ class LensRAGPipeline:
         expected=[s.label for s in scopes] if plan.qtype!="local" else []
         coverage=completeness_report([{"entity":r.get("scope")} for r in records],expected)
         conflicts=find_conflicts(records) if plan.operation!="map_reduce" and not estimate else []
-        judge=self.llm.json("Check whether each answer claim is supported by supplied evidence spans and doc IDs. Return JSON {supported:boolean, unsupported_claims:[], notes:string}. Be conservative.",json.dumps({"question":q,"answer":answer,"records":records[:200]},default=str))
+        judge=_role(self.llm,"verify").json("Check whether each answer claim is supported by supplied evidence spans and doc IDs. Return JSON {supported:boolean, unsupported_claims:[], notes:string}. Be conservative.",json.dumps({"question":q,"answer":answer,"records":records[:200]},default=str))
         return {"coverage":coverage,"conflicts":conflicts,"version_resolution":flags,"claim_support":judge,
                 "uncertainty":uncertainty_report(estimate,synthesis)}
 
@@ -386,7 +388,7 @@ class LensRAGPipeline:
         return {"unsupported_numbers":unsupported,"ok":not unsupported}
 
     def _finalize(self,q,answer,records,verification):
-        return self.llm.text("Produce the final answer with concise citations [doc_id]. Keep each statement's [exact], [estimated] or "
+        return _role(self.llm,"answer").text("Produce the final answer with concise citations [doc_id]. Keep each statement's [exact], [estimated] or "
                              "[generated] label and its interval or support. Explicitly disclose incomplete coverage, conflicts, "
                              "superseded or pending values, or unsupported claims from verification. Do not hide uncertainty and "
                              "do not add numbers that are not in the draft.",

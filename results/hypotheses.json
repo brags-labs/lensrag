@@ -1186,64 +1186,64 @@
       "method": "bm25_topk",
       "scope": "global",
       "context_tokens": 2506.777777777778,
-      "latency_p50": 1.9593755132518709,
-      "latency_p95": 2.545154344988987
+      "latency_p50": 1.77958351559937,
+      "latency_p95": 2.20293749589473
     },
     {
       "tier": "L",
       "method": "bm25_topk",
       "scope": "local",
       "context_tokens": 1765.6470588235295,
-      "latency_p50": 2.3113329662010074,
-      "latency_p95": 2.7898999862372875
+      "latency_p50": 2.022541011683643,
+      "latency_p95": 2.1658249432221055
     },
     {
       "tier": "L",
       "method": "hybrid_topk",
       "scope": "global",
       "context_tokens": 2279.4305555555557,
-      "latency_p50": 9.426374977920204,
-      "latency_p95": 10.38298347266391
+      "latency_p50": 8.437020995188504,
+      "latency_p95": 8.984706288902089
     },
     {
       "tier": "L",
       "method": "hybrid_topk",
       "scope": "local",
       "context_tokens": 1711.764705882353,
-      "latency_p50": 10.084458044730129,
-      "latency_p95": 10.840449808165431
+      "latency_p50": 8.54079204145819,
+      "latency_p95": 8.806399814784527
     },
     {
       "tier": "L",
       "method": "lensrag",
       "scope": "global",
       "context_tokens": 7740.25,
-      "latency_p50": 55.946770997252315,
-      "latency_p95": 113.46496046171528
+      "latency_p50": 52.590687468182296,
+      "latency_p95": 106.79837107309142
     },
     {
       "tier": "L",
       "method": "lensrag",
       "scope": "local",
       "context_tokens": 969.6470588235294,
-      "latency_p50": 6.412999937310815,
-      "latency_p95": 7.464700448326766
+      "latency_p50": 6.0522499261423945,
+      "latency_p95": 6.350257969461381
     },
     {
       "tier": "L",
       "method": "lensrag_rerank",
       "scope": "global",
       "context_tokens": 19852.069444444445,
-      "latency_p50": 426.14079150371253,
-      "latency_p95": 1271.8845956667797
+      "latency_p50": 403.9324159966782,
+      "latency_p95": 1195.7418372330724
     },
     {
       "tier": "L",
       "method": "lensrag_rerank",
       "scope": "local",
       "context_tokens": 3666.8823529411766,
-      "latency_p50": 75.06699999794364,
-      "latency_p95": 87.002333602868
+      "latency_p50": 67.54145794548094,
+      "latency_p95": 77.75244137737899
     },
     {
       "tier": "L",
@@ -1298,64 +1298,64 @@
       "method": "bm25_topk",
       "scope": "global",
       "context_tokens": 1831.4418604651162,
-      "latency_p50": 0.5295420996844769,
-      "latency_p95": 0.6776375113986433
+      "latency_p50": 0.4434589063748717,
+      "latency_p95": 0.5681378184817731
     },
     {
       "tier": "M",
       "method": "bm25_topk",
       "scope": "local",
       "context_tokens": 1539.3529411764705,
-      "latency_p50": 0.6012079538777471,
-      "latency_p95": 0.8132250513881445
+      "latency_p50": 0.5295829614624381,
+      "latency_p95": 0.6029663840308785
     },
     {
       "tier": "M",
       "method": "hybrid_topk",
       "scope": "global",
       "context_tokens": 1649.0232558139535,
-      "latency_p50": 2.113541937433183,
-      "latency_p95": 2.5160590768791735
+      "latency_p50": 1.803708029910922,
+      "latency_p95": 2.0924542215652764
     },
     {
       "tier": "M",
       "method": "hybrid_topk",
       "scope": "local",
       "context_tokens": 1500.8823529411766,
-      "latency_p50": 2.161791082471609,
-      "latency_p95": 2.6226668152958155
+      "latency_p50": 1.9609580049291253,
+      "latency_p95": 2.1335995756089683
     },
     {
       "tier": "M",
       "method": "lensrag",
       "scope": "global",
       "context_tokens": 5982.162790697675,
-      "latency_p50": 23.14404200296849,
-      "latency_p95": 47.83837021095678
+      "latency_p50": 20.03620809409767,
+      "latency_p95": 42.49761672690511
     },
     {
       "tier": "M",
       "method": "lensrag",
       "scope": "local",
       "context_tokens": 885.1176470588235,
-      "latency_p50": 2.774332999251783,
-      "latency_p95": 3.0474750790745024
+      "latency_p50": 2.3732499685138464,
+      "latency_p95": 2.604541787877679
     },
     {
       "tier": "M",
       "method": "lensrag_rerank",
       "scope": "global",
       "context_tokens": 8955.720930232557,
-      "latency_p50": 331.0832909774035,
-      "latency_p95": 709.0998580097219
+      "latency_p50": 303.06375003419816,
+      "latency_p95": 628.6195583525111
     },
     {
       "tier": "M",
       "method": "lensrag_rerank",
       "scope": "local",
       "context_tokens": 3558.823529411765,
-      "latency_p50": 57.08220903761685,
-      "latency_p95": 66.82486641220748
+      "latency_p50": 55.035540950484574,
+      "latency_p95": 63.26086677145213
     },
     {
       "tier": "M",
@@ -1410,64 +1410,64 @@
       "method": "bm25_topk",
       "scope": "global",
       "context_tokens": 2696.0,
-      "latency_p50": 0.2084579318761825,
-      "latency_p95": 0.24440796114504332
+      "latency_p50": 0.1926670083776116,
+      "latency_p95": 0.23944131098687646
     },
     {
       "tier": "S",
       "method": "bm25_topk",
       "scope": "local",
       "context_tokens": 2689.470588235294,
-      "latency_p50": 0.2377079799771309,
-      "latency_p95": 0.291640986688435
+      "latency_p50": 0.2460830146446824,
+      "latency_p95": 0.2716160146519542
     },
     {
       "tier": "S",
       "method": "hybrid_topk",
       "scope": "global",
       "context_tokens": 2704.3529411764707,
-      "latency_p50": 0.6218329071998596,
-      "latency_p95": 0.8220333140343427
+      "latency_p50": 0.5649169906973839,
+      "latency_p95": 0.642708339728415
     },
     {
       "tier": "S",
       "method": "hybrid_topk",
       "scope": "local",
       "context_tokens": 2717.529411764706,
-      "latency_p50": 0.6625409005209804,
-      "latency_p95": 0.8667503250762818
+      "latency_p50": 0.6622500950470567,
+      "latency_p95": 1.1069915955886243
     },
     {
       "tier": "S",
       "method": "lensrag",
       "scope": "global",
       "context_tokens": 9363.117647058823,
-      "latency_p50": 7.2072499897331,
-      "latency_p95": 8.047800022177398
+      "latency_p50": 6.22670806478709,
+      "latency_p95": 7.174308388493955
     },
     {
       "tier": "S",
       "method": "lensrag",
       "scope": "local",
       "context_tokens": 1167.8823529411766,
-      "latency_p50": 1.01500004529953,
-      "latency_p95": 1.6536253737285715
+      "latency_p50": 0.939207966439426,
+      "latency_p95": 1.7778922338038665
     },
     {
       "tier": "S",
       "method": "lensrag_rerank",
       "scope": "global",
       "context_tokens": 6739.588235294118,
-      "latency_p50": 251.20470905676484,
-      "latency_p95": 356.77184143569315
+      "latency_p50": 229.6774999704212,
+      "latency_p95": 349.43013335578144
     },
     {
       "tier": "S",
       "method": "lensrag_rerank",
       "scope": "local",
       "context_tokens": 3581.4117647058824,
-      "latency_p50": 48.53154101874679,
-      "latency_p95": 76.14574939943842
+      "latency_p50": 47.72550007328391,
+      "latency_p95": 117.13958277832694
     },
     {
       "tier": "S",

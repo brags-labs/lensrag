@@ -193,6 +193,8 @@ def answers_summary(answers: pd.DataFrame | None):
 # --- report ------------------------------------------------------------------------------
 def analyse(output_dir) -> dict:
     out = Path(output_dir)
+    if not (out / "metrics.csv").exists():
+        return analyse_answers_only(out)
     df = pd.read_csv(out / "metrics.csv")
     if "scope" not in df:
         df["scope"] = np.where(df.query_type == "local", "local", "global")
@@ -209,6 +211,22 @@ def analyse(output_dir) -> dict:
     (out / "hypotheses.json").write_text(json.dumps(result, indent=2, default=lambda o: o.item() if hasattr(o, "item") else str(o)),
                                          encoding="utf-8")
     (out / "hypotheses.md").write_text(render(result, df), encoding="utf-8")
+    return result
+
+
+def analyse_answers_only(out: Path) -> dict:
+    """For a folder with answers.csv but no retrieval metrics (e.g. a quick answer check)."""
+    answers = pd.read_csv(out / "answers.csv") if (out / "answers.csv").exists() else None
+    ans = answers_summary(answers)
+    result = {"answer_level": ans.to_dict("records") if ans is not None else None}
+    (out / "hypotheses.json").write_text(json.dumps(result, indent=2, default=str), encoding="utf-8")
+    lines = ["# Answer-level results", "", "No retrieval metrics in this folder, so only the answer-level table is shown.", "",
+             "| Tier | Method | Scope | n | Exact match | Set F1 | Interval coverage | n with interval | Tokens | p50 s |",
+             "|---|---|---|---:|---:|---:|---:|---:|---:|---:|"]
+    for x in result["answer_level"] or []:
+        lines.append(f"| {x['tier']} | {x['method']} | {x['scope']} | {x['n']} | {_fmt(x['exact_match'])} | {_fmt(x['set_f1'])} | "
+                     f"{_fmt(x.get('interval_coverage'))} | {int(x.get('n_interval') or 0)} | {x['tokens']:,.0f} | {_fmt(x['latency_s'], 2)} |")
+    (out / "hypotheses.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
     return result
 
 

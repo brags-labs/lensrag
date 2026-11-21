@@ -24,6 +24,12 @@ class ScoringTests(unittest.TestCase):
         em, f1 = score_answer([["Singapore", 17], ["Germany", 20], ["India", 12]], gold, "ranked_list")
         self.assertEqual((em, f1), (0.0, 1.0))  # right names, wrong order
 
+    def test_answers_as_name_number_objects(self):
+        gold = [["Germany", 20], ["Singapore", 17], ["India", 12]]
+        pred = [{"name": "Germany", "number": 20}, {"name": "Singapore", "number": 12}, {"name": "India", "number": 12}]
+        self.assertEqual(score_answer(pred, gold, "ranked_list"), (0.0, 1.0))  # right names, one wrong value
+        self.assertEqual(score_answer({"country": "United States", "weeks": 8}, ["United States", 8], "tuple"), (1.0, 1.0))
+
     def test_tuple_and_text(self):
         self.assertEqual(score_answer(["United States", 8], ["United States", 8], "tuple"), (1.0, 1.0))
         self.assertEqual(score_answer(["United States", 6], ["United States", 8], "tuple"), (0.0, 0.5))

@@ -1,5 +1,5 @@
 from __future__ import annotations
-import json, time, platform
+import json, re, time, platform
 from pathlib import Path
 import pandas as pd
 from .data import ensure_extracted,load_documents,load_gold,chunk_document
@@ -55,7 +55,9 @@ def tier_index(docs, tier, store_dir=None, semantic="tfidf", encoder=None, domai
     if store_dir:
         from .store import ChromaChunkStore,document_fingerprint
         fp=document_fingerprint(docs,CHUNK_PARAMS|{"semantic":semantic,"domain":domain.fingerprint()})
-        store=ChromaChunkStore(store_dir,f"lensrag_{domain.name}_{tier}_{semantic}")
+        # One collection per embedding model, so switching models doesn't overwrite another model's vectors.
+        suffix="" if not model or model==DEFAULT_EMBEDDING_MODEL else "_"+re.sub(r"[^A-Za-z0-9]+","-",model.split("/")[-1]).strip("-")
+        store=ChromaChunkStore(store_dir,f"lensrag_{domain.name}_{tier}_{semantic}{suffix}"[:60])
         if store.is_current(fp,model):
             chunks,vectors=store.load(with_embeddings=semantic=="dense"); source="chroma"
     if source!="chroma":
@@ -69,7 +71,7 @@ def tier_index(docs, tier, store_dir=None, semantic="tfidf", encoder=None, domai
 
 def run_experiment(zip_path, extract_dir, tiers=("S","M","L"), top_k=10, output=Path("results"), rerank=False,
                    store_dir=None, semantic="tfidf", embedding_model=DEFAULT_EMBEDDING_MODEL, judge_threshold=-4.0,
-                   domain="hr", long_context=True):
+                   domain="hr", long_context=True, judge_model="cross-encoder/ms-marco-MiniLM-L-6-v2"):
     domain=load_domain(domain) if not isinstance(domain,Domain) else domain
     zip_path=Path(zip_path); extract_dir=Path(extract_dir); output=Path(output)
     output.mkdir(parents=True,exist_ok=True)
@@ -80,7 +82,7 @@ def run_experiment(zip_path, extract_dir, tiers=("S","M","L"), top_k=10, output=
     judge=None
     encoder=DenseEncoder(embedding_model) if semantic=="dense" else None
     if rerank:
-        judge=CrossEncoderJudge(threshold=judge_threshold)
+        judge=CrossEncoderJudge(model_name=judge_model,threshold=judge_threshold)
         judge.model  # load up front so model loading is not counted as query latency
         methods.append("lensrag_rerank")
     lc_methods=list(LONG_CONTEXT_WINDOWS) if long_context else []

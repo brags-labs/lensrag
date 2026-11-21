@@ -20,6 +20,8 @@ def main():
     run.add_argument("--domain",default="hr",help="Domain config: built-in name (hr, legal) or path to a .yaml/.json file")
     run.add_argument("--rerank",action="store_true",help="Also run lensrag_rerank (cross-encoder reranking; needs sentence-transformers)")
     run.add_argument("--no-long-context",action="store_true",help="Skip the long-context baselines")
+    run.add_argument("--judge-model",default="cross-encoder/ms-marco-MiniLM-L-6-v2",help="Cross-encoder used as the relevance judge (lensrag_rerank), e.g. BAAI/bge-reranker-v2-m3")
+    run.add_argument("--judge-threshold",type=float,default=-4.0,help="Minimum cross-encoder score for a chunk to count as relevant (model-specific)")
     hyp=sub.add_parser("hypotheses",help="Test H1-H3 from an experiment's metrics.csv (and answers.csv if present)")
     hyp.add_argument("--output",default="results")
     ans=sub.add_parser("answers",help="Answer the gold questions with an LLM and score exact match / set F1 (H2)")
@@ -27,16 +29,20 @@ def main():
     ans.add_argument("--methods",nargs="+",default=["rag_topk","long_context_128k","lensrag"],
                      choices=["rag_topk","long_context_128k","long_context_1m","lensrag"])
     ans.add_argument("--llm-model",default=None,help="Model id; default LENSRAG_LLM_MODEL, else claude-opus-5-5 (Claude) or gpt-4o-mini (OpenAI)")
-    ans.add_argument("--llm-provider",default=None,choices=["auto","anthropic","openai"],
+    ans.add_argument("--llm-stack",default=None,help="Per-stage model preset, e.g. local-qwen (see lensrag/full/routing.py)")
+    ans.add_argument("--llm-provider",default=None,choices=["auto","anthropic","openai","ollama"],
                      help="Default: Claude if ANTHROPIC_API_KEY is set, else OpenAI if OPENAI_API_KEY is set")
     ans.add_argument("--index-dir",default="artifacts/index_L",help="Index from build-index for the lensrag method, if present")
     ans.add_argument("--limit",type=int,help="Only the first N questions (for a quick check)")
+    ans.add_argument("--qids",nargs="+",help="Only these question ids, e.g. Q001 Q070")
     ans.add_argument("--domain",default="hr")
     rep=sub.add_parser("report"); rep.add_argument("--input",default="results/metrics.csv"); rep.add_argument("--output",default="results/report.md")
     build=sub.add_parser("build-index",help="Build and persist the full LensRAG L-tier dense hybrid index")
     build.add_argument("--tier",default="L",choices=["S","M","L"]); build.add_argument("--index-dir",default="artifacts/index_L"); build.add_argument("--embedding-model",default="sentence-transformers/all-MiniLM-L6-v2")
     build.add_argument("--domain",default="hr",help="Domain config: built-in name (hr, legal) or path to a .yaml/.json file")
     build.add_argument("--corpus",help="Folder of .md/.txt documents to index instead of the BragsLabs corpus")
+    osu=sub.add_parser("ollama-setup",help="Create the 32k-context Ollama model variants used by a local model stack")
+    osu.add_argument("--stack",default="local-qwen"); osu.add_argument("--num-ctx",type=int,default=32768)
     ent=sub.add_parser("entities",help="List the entity types and entities found in a corpus")
     ent.add_argument("--domain",default="hr",help="Domain config: built-in name (hr, legal) or path to a .yaml/.json file")
     ent.add_argument("--corpus",help="Folder of .md/.txt documents; default is the BragsLabs corpus")
@@ -45,7 +51,8 @@ def main():
     ent.add_argument("--json",action="store_true",help="Print the full inventory as JSON")
     ask=sub.add_parser("ask",help="Ask a question using a persisted LensRAG index and configured LLM")
     ask.add_argument("question"); ask.add_argument("--index-dir",default="artifacts/index_L"); ask.add_argument("--llm-model",default=None,help="Model id; default claude-opus-5-5 (Claude) or gpt-4o-mini (OpenAI)");
-    ask.add_argument("--llm-provider",default=None,choices=["auto","anthropic","openai"]); ask.add_argument("--page-size",type=int,default=5,help="Chunks fetched per entity scope per retrieval round")
+    ask.add_argument("--llm-provider",default=None,choices=["auto","anthropic","openai","ollama"]);
+    ask.add_argument("--llm-stack",default=None,help="Per-stage model preset, e.g. local-qwen (see lensrag/full/routing.py)"); ask.add_argument("--page-size",type=int,default=5,help="Chunks fetched per entity scope per retrieval round")
     args=ap.parse_args()
     base=Path(__file__).resolve().parents[1]
     zip_path=base/"data"/"bragslabs_corpus.zip"
@@ -60,7 +67,7 @@ def main():
     elif args.cmd=="run":
         df,summary,config=run_experiment(zip_path,extracted,args.tiers,args.top_k,base/args.output,rerank=args.rerank,domain=args.domain,
             store_dir=None if args.no_store else base/args.store,semantic=args.semantic,embedding_model=args.embedding_model,
-            long_context=not args.no_long_context)
+            long_context=not args.no_long_context,judge_model=args.judge_model,judge_threshold=args.judge_threshold)
         print(summary.to_string(index=False))
         build_report(base/args.output/"metrics.csv",base/args.output/"report.md")
         from .hypotheses import analyse
@@ -71,8 +78,8 @@ def main():
     elif args.cmd=="answers":
         from .answers import run_answers
         from .hypotheses import analyse
-        df=run_answers(zip_path,extracted,base/args.output,tier=args.tier,methods=args.methods,llm_model=args.llm_model,llm_provider=args.llm_provider,
-                       domain=args.domain,index_dir=base/args.index_dir,limit=args.limit,store_dir=base/"artifacts/chroma")
+        df=run_answers(zip_path,extracted,base/args.output,tier=args.tier,methods=args.methods,llm_model=args.llm_model,llm_provider=args.llm_provider,llm_stack=args.llm_stack,
+                       domain=args.domain,index_dir=base/args.index_dir,limit=args.limit,qids=args.qids,store_dir=base/"artifacts/chroma")
         print(df.groupby(["method","scope"])[["exact_match","set_f1","total_tokens"]].mean().to_string())
         analyse(base/args.output); print(f"Hypothesis report: {base/args.output/'hypotheses.md'}")
     elif args.cmd=="report":
@@ -85,13 +92,29 @@ def main():
         print(json.dumps({"status":"built","index_dir":args.index_dir,"domain":pipe.domain.name,"chunks":len(pipe.index.chunks),
                           "documents":len({c.doc_id for c in pipe.index.chunks}),"embedding_kind":pipe.index.embedding_kind,
                           "entities":{t:len(v) for t,v in pipe.inventory["entities"].items()}},indent=2))
+    elif args.cmd=="ollama-setup":
+        ollama_setup(args.stack,args.num_ctx)
     elif args.cmd=="entities":
         print_entities(args,zip_path,extracted)
     elif args.cmd=="ask":
         from .full.pipeline import LensRAGPipeline,PipelineConfig
-        cfg=PipelineConfig(index_dir=args.index_dir,llm_model=args.llm_model,llm_provider=args.llm_provider,page_size=args.page_size)
+        cfg=PipelineConfig(index_dir=args.index_dir,llm_model=args.llm_model,llm_provider=args.llm_provider,llm_stack=args.llm_stack,page_size=args.page_size)
         pipe=LensRAGPipeline.load(args.index_dir,cfg,use_llm=True)
         print(json.dumps(pipe.ask(args.question),ensure_ascii=False,indent=2))
+
+def ollama_setup(stack, num_ctx):
+    """Create each "lensrag-" variant (base weights + num_ctx) with `ollama create`, then list digests."""
+    import subprocess, tempfile
+    from .full.routing import ollama_variants
+    for name, modelfile in sorted(ollama_variants(stack, num_ctx).items()):
+        with tempfile.NamedTemporaryFile("w", suffix=".Modelfile", delete=False) as f:
+            f.write(modelfile)
+        print(f"creating {name}: {modelfile.strip().replace(chr(10), '; ')}")
+        subprocess.run(["ollama", "create", name, "-f", f.name], check=True, capture_output=True)
+        Path(f.name).unlink(missing_ok=True)
+    out = subprocess.run(["ollama", "list"], check=True, capture_output=True, text=True).stdout
+    print("\nRecord these model IDs in the report:\n" + out)
+
 
 def print_entities(args, zip_path, extracted):
     """Show each entity type, where its values come from, and the entities found."""

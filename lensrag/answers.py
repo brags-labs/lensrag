@@ -17,6 +17,7 @@ import ast, json, re, time
 from pathlib import Path
 import pandas as pd
 from .aggregation import normalize_label
+from .full.routing import role
 
 FORMAT_INSTRUCTIONS = {
     "value": "a single number (no units) or, if not numeric, a short string",
@@ -64,9 +65,23 @@ def _item_eq(pred, gold, ratio=False):
     return _norm(pred) == _norm(gold) and _norm(gold) != ""
 
 
+def _from_dict(d):
+    """{"name": "Germany", "number": 20} (or similar keys) -> ["Germany", 20]; other dicts unchanged."""
+    if not isinstance(d, dict):
+        return d
+    text = next((v for v in d.values() if isinstance(v, str)), None)
+    num = next((v for v in d.values() if isinstance(v, (int, float)) and not isinstance(v, bool)), None)
+    if text is not None and num is not None:
+        return [text, num]
+    return text if text is not None else num if num is not None else d
+
+
 def _as_list(x):
+    if isinstance(x, dict):  # one object is the answer itself: {"name": "US", "weeks": 8} -> ["US", 8]
+        v = _from_dict(x)
+        return v if isinstance(v, list) else [v]
     if isinstance(x, list):
-        return x
+        return [_from_dict(i) for i in x]
     if isinstance(x, str):
         try:
             v = json.loads(x)
@@ -185,13 +200,13 @@ def _ask(llm, question, fmt, context):
     # questions (the long-context corpus) is a stable prefix that the provider can cache.
     system = ("Answer the HR question using only the context below. If the context is insufficient, give your best "
               "answer from it anyway.\n\nCONTEXT:\n" + json.dumps(context, ensure_ascii=False))
-    out = llm.json(system, json.dumps({"question": question, "answer_format": "Return JSON {\"answer\": ...} where answer is "
+    out = role(llm, "answer").json(system, json.dumps({"question": question, "answer_format": "Return JSON {\"answer\": ...} where answer is "
                                        + FORMAT_INSTRUCTIONS.get(fmt, "a short answer")}, ensure_ascii=False))
     return out.get("answer")
 
 
 def _to_format(llm, question, fmt, result):
-    out = llm.json("Convert this answer to the requested format without changing its content. Return JSON "
+    out = role(llm, "extract").json("Convert this answer to the requested format without changing its content. Return JSON "
                    "{\"answer\": ...} where answer is " + FORMAT_INSTRUCTIONS.get(fmt, "a short answer") + ".",
                    json.dumps({"question": question, "answer": result.get("answer"),
                                "deterministic_result": result.get("deterministic_result")}, ensure_ascii=False, default=str))
@@ -199,19 +214,20 @@ def _to_format(llm, question, fmt, result):
 
 
 def run_answers(zip_path, extract_dir, output, tier="L", methods=("rag_topk", "long_context_128k", "lensrag"),
-                top_k=10, llm=None, llm_model=None, llm_provider=None, domain="hr", index_dir=None, limit=None, store_dir=None,
-                lexical_fallback=False):
+                top_k=10, llm=None, llm_model=None, llm_provider=None, llm_stack=None, domain="hr", index_dir=None, limit=None, store_dir=None,
+                lexical_fallback=False, qids=None):
     """Answer every eligible gold question with each method and score it; writes answers.csv."""
     from .data import ensure_extracted, load_documents, load_gold, chunk_document
     from .domain import load_domain
     from .experiment import tier_index, LONG_CONTEXT_WINDOWS, TokenCounter, long_context_docs
     from .full.providers import create_llm
     dom = load_domain(domain)
-    llm = llm or create_llm(llm_provider, llm_model)
+    llm = llm or create_llm(llm_provider, llm_model, llm_stack)
     corpus = ensure_extracted(Path(zip_path), Path(extract_dir))
     docs = load_documents(corpus, tier, dom)
     by_id = {d.doc_id: d for d in docs}
-    gold = [q for q in load_gold(corpus) if "SML".index(q.get("min_tier", "S")) <= "SML".index(tier)][:limit]
+    gold = [q for q in load_gold(corpus) if "SML".index(q.get("min_tier", "S")) <= "SML".index(tier)
+            and (not qids or q["qid"] in qids)][:limit]
     count = TokenCounter()
     doc_tokens = {d.doc_id: count(("doc", d.doc_id), d.text) for d in docs}
     index = None
@@ -222,7 +238,7 @@ def run_answers(zip_path, extract_dir, output, tier="L", methods=("rag_topk", "l
         from .full.pipeline import LensRAGPipeline, PipelineConfig
         from .full.index import PersistentHybridIndex
         from .planning import build_inventory
-        cfg = PipelineConfig(tier=tier, domain=dom.source)
+        cfg = PipelineConfig(tier=tier, domain=dom.source, llm_stack=llm_stack)
         if index_dir and (Path(index_dir) / "metadata.json").exists():
             pipe = LensRAGPipeline.load(index_dir, cfg, use_llm=False)
         else:
@@ -270,7 +286,8 @@ def run_answers(zip_path, extract_dir, output, tier="L", methods=("rag_topk", "l
                          "total_tokens": usage.get("prompt_tokens", 0) + usage.get("completion_tokens", 0),
                          "cache_read_tokens": usage.get("cache_read_tokens", 0),
                          "cache_write_tokens": usage.get("cache_write_tokens", 0),
-                         "llm_calls": usage.get("calls", 0), "latency_s": time.perf_counter() - t0, "error": err})
+                         "llm_calls": usage.get("calls", 0), "latency_s": time.perf_counter() - t0, "error": err,
+                         "usage_by_role": json.dumps(usage.get("by_role", {})) if usage.get("by_role") else ""})
     out = Path(output); out.mkdir(parents=True, exist_ok=True)
     df = pd.DataFrame(rows)
     df.to_csv(out / "answers.csv", index=False)

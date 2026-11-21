@@ -14,7 +14,7 @@ python -m lensrag.cli run --tiers S M L --top-k 10 --output results --rerank
 # Answer level (H2: exact match and set F1 of the answers): needs an LLM. Claude is used when
 # ANTHROPIC_API_KEY (or ANTHROPIC_AUTH_TOKEN) is set, else an OpenAI-compatible endpoint;
 # LENSRAG_LLM_PROVIDER=anthropic also works with an `ant auth login` profile.
-if [[ -n "${ANTHROPIC_API_KEY:-}" || -n "${ANTHROPIC_AUTH_TOKEN:-}" || -n "${LENSRAG_LLM_PROVIDER:-}" \
+if [[ -n "${ANTHROPIC_API_KEY:-}" || -n "${ANTHROPIC_AUTH_TOKEN:-}" || -n "${LENSRAG_LLM_PROVIDER:-}" || -n "${LENSRAG_LLM_STACK:-}" \
       || -n "${OPENAI_API_KEY:-}" || -n "${OPENAI_BASE_URL:-}" ]]; then
   if [[ ! -f artifacts/index_L/metadata.json ]]; then
     python -m lensrag.cli build-index --tier L --index-dir artifacts/index_L
