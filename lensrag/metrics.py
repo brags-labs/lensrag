@@ -1,5 +1,22 @@
 from __future__ import annotations
 import numpy as np
+from fnmatch import fnmatchcase
+
+def expand_gold_ids(gold_doc_ids, corpus_doc_ids):
+    """Expand wildcard gold IDs (e.g. "TKT-IN-*") into the matching corpus doc IDs.
+
+    Exact IDs are kept as-is. A pattern that matches nothing is kept literally, so it
+    still counts as missed evidence rather than silently disappearing.
+    """
+    corpus=list(dict.fromkeys(corpus_doc_ids))
+    out=[]
+    for gid in gold_doc_ids or []:
+        if any(ch in gid for ch in "*?["):
+            hits=[d for d in corpus if fnmatchcase(d,gid)]
+            out.extend(hits or [gid])
+        else:
+            out.append(gid)
+    return list(dict.fromkeys(out))
 def evidence_recall(retrieved_doc_ids, gold_doc_ids):
     gold=set(gold_doc_ids or [])
     return len(gold & set(retrieved_doc_ids))/len(gold) if gold else float("nan")

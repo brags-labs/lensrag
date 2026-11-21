@@ -218,3 +218,10 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# LensRAG persistent indexes (ChromaDB)
+artifacts/
+
+data/extracted/
+# Local working notes, kept out of the repository
+docs/ALGORITHM_COMPARISON.md

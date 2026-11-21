@@ -1,0 +1,52 @@
+{
+  "answer_level": [
+    {
+      "tier": "L",
+      "method": "lensrag",
+      "scope": "global",
+      "n": 4,
+      "exact_match": 0.5,
+      "set_f1": 0.5,
+      "interval_coverage": 1.0,
+      "n_interval": 1,
+      "tokens": 99872.5,
+      "latency_s": 686.7170282914885
+    },
+    {
+      "tier": "L",
+      "method": "lensrag",
+      "scope": "local",
+      "n": 1,
+      "exact_match": 1.0,
+      "set_f1": 1.0,
+      "interval_coverage": NaN,
+      "n_interval": 0,
+      "tokens": 9158.0,
+      "latency_s": 85.41164887498599
+    },
+    {
+      "tier": "L",
+      "method": "rag_topk",
+      "scope": "global",
+      "n": 4,
+      "exact_match": 0.5,
+      "set_f1": 0.5,
+      "interval_coverage": NaN,
+      "n_interval": 0,
+      "tokens": 2057.0,
+      "latency_s": 16.38592091650935
+    },
+    {
+      "tier": "L",
+      "method": "rag_topk",
+      "scope": "local",
+      "n": 1,
+      "exact_match": 1.0,
+      "set_f1": 1.0,
+      "interval_coverage": NaN,
+      "n_interval": 0,
+      "tokens": 1566.0,
+      "latency_s": 85.11636766698211
+    }
+  ]
+}

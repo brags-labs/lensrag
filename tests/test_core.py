@@ -1,8 +1,8 @@
 import unittest
 from pathlib import Path
 from lensrag.data import ensure_extracted, load_documents, load_gold, chunk_document
-from lensrag.metrics import evidence_recall, evidence_precision, set_f1
-from lensrag.retrieval import BM25, route_query
+from lensrag.metrics import evidence_recall, evidence_precision, set_f1, expand_gold_ids
+from lensrag.retrieval import BM25, route_query, CrossEncoderJudge
 from lensrag.aggregation import aggregate_records, completeness_report, find_conflicts, validate_evidence_records
 
 ROOT=Path(__file__).resolve().parents[1]
@@ -31,10 +31,35 @@ class CoreTests(unittest.TestCase):
         self.assertIn("Version:",c.enriched_text)
         self.assertIn("Scope:",c.enriched_text)
 
+    def test_chunk_ids_are_unique(self):
+        chunks=[c for d in load_documents(self.corpus,"L") for c in chunk_document(d)]
+        self.assertEqual(len({c.chunk_id for c in chunks}),len(chunks))
+
     def test_metrics(self):
         self.assertAlmostEqual(evidence_recall(["a","b"],["a","c"]),.5)
         self.assertAlmostEqual(evidence_precision(["a","b"],["a","c"]),.5)
         self.assertAlmostEqual(set_f1(["a","b"],["a","c"]),.5)
+
+    def test_wildcard_gold_expansion(self):
+        corpus=["TKT-IN-202511","TKT-IN-202512","TKT-DE-202511","POL-v3.0-CH01"]
+        gold=expand_gold_ids(["TKT-IN-*","POL-v3.0-CH01"],corpus)
+        self.assertEqual(gold,["TKT-IN-202511","TKT-IN-202512","POL-v3.0-CH01"])
+        self.assertAlmostEqual(evidence_recall(["TKT-IN-202511"],gold),1/3)
+        self.assertEqual(expand_gold_ids(["EXIT-*"],corpus),["EXIT-*"])
+
+    def test_cross_encoder_judge_keeps_chunks_above_threshold(self):
+        class Stub:
+            calls=0
+            def predict(self,pairs,batch_size=64):
+                Stub.calls+=len(pairs); return [len(text) for _,text in pairs]
+        class C:
+            def __init__(self,t): self.enriched_text=t; self.chunk_id=t
+        items=[(C("x"*n),0.0) for n in (2,9,5,10)]
+        judge=CrossEncoderJudge(threshold=6,model=Stub()).for_question("q")
+        self.assertEqual([len(c.enriched_text) for c,_,_ in judge(None,items)],[9,10])
+        # A chunk shared by another scope is not scored again.
+        self.assertEqual(len(judge(None,items[1:2])),1)
+        self.assertEqual(Stub.calls,4)
 
     def test_router(self):
         self.assertEqual(route_query("How many countries offer more than 20 days?"),"count")
@@ -56,7 +81,9 @@ class CoreTests(unittest.TestCase):
             {"entity":"India","attribute":"sick_days","value":6,"version":"2.0","doc_id":"c","evidence_span":"6 days"},
         ]
         self.assertEqual(completeness_report(records,["India","Germany"])["missing_entities"],["Germany"])
-        self.assertEqual(len(find_conflicts(records)),1)
+        kinds=sorted(f["kind"] for f in find_conflicts(records))
+        # Same-version disagreement is a conflict; a different value in another version is flagged too.
+        self.assertEqual(kinds,["conflict","version_difference"])
 
     def test_evidence_validation(self):
         valid,rejected=validate_evidence_records([{"entity":"India","attribute":"leave","value":18,"evidence_span":"18 days","doc_id":"a"},{}])
