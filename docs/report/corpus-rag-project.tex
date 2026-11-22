@@ -463,7 +463,7 @@ over the corpus.}
 \section{Problem Statement}
 \label{sec:problem}
 
-Standard RAG performs poorly when responding to an aggregation or a corpus-level query – those that
+Standard RAG performs poorly when responding to an aggregation or a corpus-level query -- those that
 require reasoning over entire corpus rather than responding from top-ranked chunks. Query responses from
 standard RAG may be factually incorrect on aggregation queries, highlighting the need for effective and
 evidence-based interventions. Although multiple research projects have attempted to solve this problem,
@@ -505,9 +505,7 @@ collections and support further research in this area
   whole corpus fits in the context window, but degrades as the corpus is
   scaled beyond it.
   \item The routed pipeline achieves higher set-level F1 and exact-match accuracy on global questions than all
-baselines, without reducing accuracy on local questions
-  % TODO: replace with a target figure once pilot results are available,
-  % e.g. "by at least X percentage points".
+baselines, without reducing accuracy on local questions.
   \item Completeness and conflict checks flag a majority of incomplete or
   conflicting answers with a low false-alarm rate.
 \end{enumerate}
@@ -532,7 +530,7 @@ baselines, without reducing accuracy on local questions
   cross-country comparisons, which would turn global questions into local
   ones. It is excluded from the retrieval corpus and used only to check
   gold answers.
-  % TODO: confirm, or describe the separate "shortcut" experiment instead.
+
   \item \textbf{Out of scope.} Multimodal content (images, scanned
   handwriting), real employee data, multilingual documents and production
   deployment.
@@ -551,10 +549,13 @@ baselines, without reducing accuracy on local questions
   coverage, aggregates in code at query time and verifies completeness and
   consistency.
   \item \textbf{Empirical findings:} a comparison of standard RAG,
-  long-context prompting, a GlobalRAG-style baseline and the proposed method
-  on aggregation accuracy, retrieval recall, faithfulness, cost and latency,
-  including how results change as the corpus grows.
-  % TODO: replace with the headline measured result once available.
+  long-context prompting and the proposed method on retrieval recall,
+  answer accuracy, cost and latency, across three corpus sizes. On the
+  largest corpus, LensRAG roughly doubles the evidence that reaches the
+  generator (global recall 0.71 versus 0.36) at 0.3\% of the context of
+  full-corpus prompting. With local 3B--32B models this did not raise exact
+  match on global questions (0.28 for both), and it lowered local accuracy
+  (Chapter~\ref{ch:results}).
   \item \textbf{Practitioner guidance:} recommendations on when global
   questions need more than standard RAG, and which strategy suits which
   question type.
@@ -1052,34 +1053,157 @@ completeness and conflict-detection measures that prior benchmarks do not
 report.
 
 \chapter{Methodology}
+\label{ch:methodology}
+
 \section{Research Design}
-Experimental, design-science, survey or mixed; justify the choice.
+\label{sec:design}
+
+The study is \emph{experimental}, within a design-science frame. The artefact
+is LensRAG (Section~\ref{sec:approach}). It is evaluated in controlled,
+repeatable experiments against standard retrieval-augmented generation (RAG)
+and long-context baselines on a corpus whose ground truth is known exactly.
+This design was chosen for three reasons.
+\begin{enumerate}
+  \item The hypotheses (Section~\ref{sec:rq}) are comparative and
+  quantitative, so they need paired measurements of several systems on the
+  same questions rather than a survey or case study.
+  \item Aggregation answers (counts, rankings, shares) can only be scored
+  objectively if the true answer is computed independently of the systems
+  under test \citep{lu2026corpusqa}. A synthetic corpus generated from a
+  ledger provides this (Section~\ref{sec:data}).
+  \item Corpus size is the main independent variable for H1, so the same
+  questions must be answerable at several corpus sizes. The corpus is
+  therefore built in three nested tiers.
+\end{enumerate}
+
+Each experiment has three factors: the \emph{method} (standard top-$k$ RAG,
+long-context prompting, LensRAG and its variants), the \emph{corpus tier}
+(S, M, L) and the \emph{question scope} (local or global). Measurements are
+taken at two levels:
+\begin{itemize}
+  \item \textbf{Retrieval level:} do the gold evidence documents reach the
+  context the generator reads? This is deterministic and model-free, and was
+  run on all three tiers.
+  \item \textbf{Answer level:} is the final answer correct? This needs a
+  generator LLM, and was run on tier L, the largest and hardest tier.
+\end{itemize}
+
 \section{System Architecture}
 \label{sec:architecture}
-Provide an architecture diagram (Figure~\ref{fig:arch}) and describe each
-component, the technology stack (frameworks, models, vector stores, protocols)
-and the reasons for each choice.
 
-\begin{figure}[htbp]
-\centering
-\fbox{\parbox[c][5cm][c]{0.9\textwidth}{\centering\color{NUGrey}Architecture diagram placeholder\\(\texttt{\textbackslash includegraphics[width=0.9\textbackslash textwidth]\{figures/architecture.pdf\}})}}
-\caption{System architecture.}
-\label{fig:arch}
-\end{figure}
+Figure~\ref{fig:context-arch} shows the context-level architecture and
+Figure~\ref{fig:pipeline} the query pipeline. The implementation follows the
+nine steps of Section~\ref{sec:approach}:
+\begin{itemize}
+  \item steps 1--2 (ingestion and indexing) run once, offline;
+  \item steps 3--9 run per question.
+\end{itemize}
+The rest of this section describes each component and why it was chosen. The
+models are listed in Table~\ref{tab:models} (candidates) and
+Table~\ref{tab:used-models} (models actually used).
 
-Table~\ref{tab:models} lists candidate models for each stage of the LensRAG
-pipeline (Figure~\ref{fig:pipeline}). High-volume, per-passage steps
-(classification, sub-query generation, filtering and extraction) use small,
-inexpensive models, while a stronger model is reserved for map--reduce
-summarisation and final answer generation. The models actually used, with
-exact version identifiers and access dates, are recorded in
-Chapter~\ref{ch:implementation}.
+\paragraph{Ingestion and context enrichment (steps 1--2).}
+Documents are Markdown files with YAML front matter (document id, type,
+country, version, effective date, period, status). Each document is split at
+its headings into sections. A section longer than 260 words is split again at
+paragraph boundaries, and very long passages are cut into 260-word windows
+with a 40-word overlap. Markdown tables are never split. Each chunk receives
+a context header, for example:
+\begin{quote}\small\ttfamily\raggedright
+Document: Chapter 41. Germany addendum [POL-DE] | Type: policy | Section:
+Leave | Scope: DE | Version: 3.0 | Status: current | Entities: Germany
+\end{quote}
+The header is embedded together with the chunk text. During ingestion an
+\emph{entity inventory} is built: every country, office, policy version and
+period found in the corpus, with aliases. Entity types, field mappings,
+status words and record types are declared in a domain configuration file
+(YAML). This keeps the method from being tied to HR; a second configuration
+for a legal corpus demonstrates this. Chunks, their metadata and their
+vectors are persisted in ChromaDB, so the 13{,}187-chunk tier-L index is
+built once and reused.
+
+\paragraph{Hybrid retrieval.}
+Every method uses the same hybrid retriever: BM25 for exact terms (policy
+names, document ids, numbers) plus a dense or TF-IDF similarity, combined by
+rank fusion. Dense retrieval uses BGE-M3 \citep{chen2024bgem3}, a
+multilingual embedding model that runs locally.
+
+\paragraph{Planning and entity decomposition (steps 3--4).}
+A small LLM classifies the question into one of the twelve question types and
+extracts its parameters: attribute, condition, period, version and
+aggregation. Entities named in the question are matched to the inventory by
+lookup. An optional spaCy named-entity recogniser with fuzzy matching catches
+spelling variants and possessives. For a global question with no named
+entity, the scope is every inventory entity of the relevant type (for
+example, all ten countries with an addendum). Superseded versions are
+excluded unless the question asks about a version or a date.
+
+\paragraph{Coverage-oriented retrieval (step 5).}
+Each entity scope is searched separately. The retriever fetches one page of
+five chunks per scope per round, and paging continues until a round yields no
+new relevant chunk. The relevance judgement comes from one of three sources:
+\begin{itemize}
+  \item the LLM filter in the full pipeline;
+  \item a cross-encoder in the retrieval benchmark: BGE-reranker-v2-m3, with
+  a threshold calibrated on held-out questions
+  (Section~\ref{sec:eval});
+  \item for local questions, a reranker in place of the LLM judge.
+\end{itemize}
+A scope that yields no relevant evidence is recorded and later reported as a
+possible gap in completeness.
+
+\paragraph{Evidence extraction (step 6).}
+A mid-size LLM reads each retrieved chunk and returns JSON evidence records.
+Each record holds the entity, attribute, value, unit, version, the supporting
+text span and the chunk id. Records whose span does not occur in the chunk
+are discarded.
+
+\paragraph{Computation (step 7).}
+The answer is computed in one of three modes, chosen from the question type
+and the number of records in scope:
+\begin{itemize}
+  \item \emph{Mode A, exact.} Counts, extrema, rankings, top-$k$, filters,
+  sums and categorical tallies are computed in Python over the evidence
+  records, never by the LLM.
+  \item \emph{Mode B, estimated.} This mode handles questions over record logs
+  too large to read in full (for example, 6{,}038 helpdesk tickets). LensRAG
+  draws a stratified random sample of 150 records and labels each one three
+  times. It reports a point estimate with a 95\% interval: Wilson intervals
+  for proportions and a stratified bootstrap for means, both with a
+  finite-population correction. Sentiment can be labelled with a RoBERTa
+  classifier, giving soft labels.
+  \item \emph{Mode C, generated.} Theme and insight questions use map--reduce.
+  The reduce step is repeated five times and only claims that appear in a
+  majority of runs are kept. Each claim carries its support and citations,
+  and any number in the generated text that is absent from the evidence is
+  flagged.
+\end{itemize}
+
+\paragraph{Verification and answer (steps 8--9).}
+The verifier checks three things:
+\begin{itemize}
+  \item \emph{completeness:} every scope in the plan has evidence;
+  \item \emph{consistency:} the same attribute does not carry different
+  values in different documents. Values that differ across versions are
+  resolved by version and effective date rather than reported as conflicts;
+  \item \emph{provenance:} every number in the answer traces back to an
+  evidence record.
+\end{itemize}
+An optional DeBERTa-v3-large natural-language-inference model checks each
+answer sentence against focused premises built from the evidence. A strong
+LLM then writes the answer with citations and any flags.
+
+\paragraph{Model routing.}
+Each LLM call names a \emph{role}: classify, extract, map, reduce, verify or
+answer. A routing layer sends each role to its own model. This puts the
+cheap, high-volume steps on small models, as Table~\ref{tab:models}
+proposes. Providers are interchangeable: the same code runs on Claude, on
+any OpenAI-compatible endpoint, or on local models served by Ollama.
 
 \begin{table}[htbp]
 \centering\small
 \caption{Candidate models for each stage of the LensRAG query pipeline.
-Final choices and exact versions are reported in
-Chapter~\ref{ch:implementation}.}
+The models used in the experiments are listed in Table~\ref{tab:used-models}.}
 \label{tab:models}
 \setstretch{1.1}
 \begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{3.1cm} >{\raggedright\arraybackslash}X >{\raggedright\arraybackslash}X@{}}
@@ -1118,81 +1242,784 @@ GPT-4o, Claude Sonnet, Gemini Pro \\
 \end{table}
 
 \section{Data and Benchmarks}
-Datasets, benchmark suites, task construction, annotation protocol and
-inter-annotator agreement; licences; contamination controls.
-\section{Evaluation Protocol}
-Metrics (accuracy, pass\textasciicircum{}k, latency p50/p95, tokens and USD
-per successful task, attack-success rate, etc.); baselines; number of seeds;
-statistical tests; judge-model choice and its validation against humans.
-\section{Cost, Governance and Observability Instrumentation}
-Describe how cost was tracked (token accounting, GPU hours), how traces were
-captured (OpenTelemetry, LangSmith, Langfuse), and which governance or safety
-controls were evaluated. \emph{This section is mandatory for all projects.}
-\section{Threats to Validity}
-Construct, internal, external and conclusion validity.
+\label{sec:data}
 
-\chapter{Implementation}
-\label{ch:implementation}
-\section{Development Environment and Reproducibility}
-Repository layout, environment specification, seeds, model versions and API
-snapshots (record exact model identifiers and dates).
-\section{Key Components}
-Describe non-obvious engineering decisions. Use listings sparingly.
+\paragraph{Corpus.}
+The BragsLabs HR corpus (version 1.0, built 5 November 2026) is a synthetic
+document collection for a fictional multinational. It contains 500 Markdown
+files and about 1.52 million words, with no real people or employee data
+(Table~\ref{tab:corpus}). It contains:
+\begin{itemize}
+  \item three versions of the HR policy manual (v1.0, v2.0 and the current
+  v3.0, with ten country addenda);
+  \item 60 HR circulars, six of which announce changes effective in 2027;
+  \item 30 FAQs, 14 office handbooks and 10 benefits summaries;
+  \item four record logs: 6{,}038 helpdesk tickets, 1{,}697 grievance cases,
+  960 exit interviews and 3{,}850 pulse-survey comments.
+\end{itemize}
 
-\begin{lstlisting}[language=Python,caption={Illustrative LangGraph node definition.},label={lst:node}]
-def retrieval_evaluator(state: AgentState) -> AgentState:
-    """Grade retrieved passages; route to refine / web-search / generate."""
-    scores = grader.batch(state["documents"], state["question"])
-    state["route"] = "generate" if max(scores) > TAU else "web_search"
-    return state
-\end{lstlisting}
+\paragraph{Construction.}
+The corpus is generated \emph{ledger first}, by standard-library Python
+scripts with a fixed seed:
+\begin{enumerate}
+  \item The facts are generated first and stored as JSON ledgers: every
+  policy value by country and version, circulars, key events, planted
+  conflicts, and every individual record with its category, date, sentiment
+  label and resolution time.
+  \item The documents are then rendered from the ledger with templates.
+  \item A validator runs about 2{,}700 checks: that the text agrees with the
+  ledger, that the planted conflicts are present, that record counts are
+  correct and that every evidence id exists.
+\end{enumerate}
 
-\section{Deployment}
-Serving stack, autoscaling, monitoring, rollback; edge or on-premise
-constraints where relevant.
+\paragraph{Planted signals.}
+The corpus contains deliberate signals for a system to find:
+\begin{itemize}
+  \item \emph{Events with measurable effects.} The rise from two to three
+  hybrid office days on 1 April 2026 increases hybrid tickets and grievances,
+  and makes exit sentiment more negative. The migration to a new expense
+  module raises reimbursement volumes and resolution times.
+  \item \emph{Conflicts.} Twelve conflicts are planted: an internal
+  inconsistency in India sick leave, future-dated circulars, stale FAQs,
+  stale handbooks and a stale benefits summary. Legitimate version updates
+  are included as negative controls.
+\end{itemize}
 
-\chapter{Results}
-\section{Main Findings}
-Answer each RQ directly with tables and figures. Report confidence intervals
-or variance across seeds.
+\paragraph{Tiers and shortcut control.}
+The tiers are nested (Table~\ref{tab:corpus}). Five documents that
+pre-aggregate answers are flagged \texttt{retrieval\_exclude} and are never
+indexed: the country-comparison chapter in v2.0 and v3.0, the change log and
+the two annual reports. They are used only to check gold answers.
 
 \begin{table}[htbp]
 \centering\small
-\caption{Main results (illustrative). Best value per column in bold.}
-\label{tab:main}
-\begin{tabular}{@{}lrrrr@{}}
+\caption{Corpus tiers. Tokens counted with \texttt{tiktoken cl100k\_base};
+chunks after context-enriched chunking.}
+\label{tab:corpus}
+\begin{tabular}{@{}llrrrr@{}}
 \toprule
-Configuration & Accuracy (\%) & p95 latency (s) & USD / task & Attack success (\%) \\
+Tier & Contents & Documents & Words & Tokens & Chunks \\
 \midrule
-Baseline        & 71.2 & 3.4 & 0.041 & 61.0 \\
-Variant A       & 74.8 & 4.1 & 0.052 & 22.5 \\
-Variant B (ours)& \textbf{75.1} & 4.4 & 0.055 & \textbf{4.1} \\
+S & Manual v3.0 & 46 & 45{,}069 & 59{,}912 & 580 \\
+M & S + v1.0, v2.0, circulars, FAQs, handbooks, benefits & 245 & 250{,}423 & 335{,}180 & 3{,}441 \\
+L & M + tickets, grievances, exit notes, surveys & 495 & 1{,}660{,}802 & 2{,}572{,}335 & 13{,}187 \\
 \bottomrule
 \end{tabular}
 \end{table}
 
+\paragraph{Question set.}
+The gold set has 89 questions. A script computes each answer from the
+ledger, never from the text, so the ground truth is independent of any
+system under test. Each question records:
+\begin{itemize}
+  \item its type;
+  \item its answer format: value, ratio, set, list, tuple, ranked list or
+  text;
+  \item the evidence document ids;
+  \item the smallest tier that contains its evidence.
+\end{itemize}
+There are 17 local and 72 global questions. The global questions span eleven
+types: count (16), extremum (11), version difference (9), rank (6), theme
+(6), filter (5), temporal (5), conflict (5), aggregate (5), comparison (2)
+and sentiment shift (2). A tier contains every question whose minimum tier it
+includes: 34 questions in S, 60 in M and 89 in L.
+
+\paragraph{Contamination and leakage controls.}
+\begin{itemize}
+  \item The ledger and the gold evidence ids are used only for scoring, never
+  at inference time.
+  \item Retrieval-excluded documents are not indexed.
+  \item The corpus was generated after the knowledge cut-off of the models
+  used, and describes a fictional company, so its facts cannot be memorised.
+\end{itemize}
+
+\section{Evaluation Protocol}
+\label{sec:eval}
+
+\paragraph{Methods compared.}
+\begin{itemize}
+  \item \texttt{bm25\_topk} and \texttt{hybrid\_topk}: standard RAG with a
+  fixed top-10 chunks.
+  \item \texttt{long\_context\_128k} and \texttt{long\_context\_1m}: whole
+  documents packed in corpus order until a 128k or 1M-token window is full,
+  with 4k tokens reserved for the prompt.
+  \item \texttt{long\_context\_full}: the whole corpus. This is an oracle
+  that shows the upper bound of long-context prompting.
+  \item \texttt{lensrag}: context-enriched entity scoping with one page per
+  scope.
+  \item \texttt{lensrag\_rerank}: the same with the coverage loop and the
+  calibrated relevance judge.
+\end{itemize}
+At the answer level, \texttt{rag\_topk} (hybrid top-10 chunks, then one LLM
+answer) is compared with the full LensRAG pipeline. The long-context answer
+baseline was not run with local models: their 32k-token context cannot hold
+even tier S. Long context is therefore evaluated at the retrieval level only.
+
+\paragraph{Metrics.}
+\begin{itemize}
+  \item \emph{Retrieval:} evidence-document recall, precision and F1, context
+  tokens and retrieval latency (p50 and p95).
+  \item \emph{Answers:} exact match and set-level F1, scored in the gold
+  format.
+  \begin{itemize}
+    \item Numbers match within a 1\% tolerance, or within 0.005 for ratios.
+    \item A currency amount without its symbol matches, but a different
+    currency does not.
+    \item A tuple must match element by element.
+    \item A ranked list must match in order and value.
+    \item Yes/no text answers are scored on the polarity of the answer;
+    other free-text answers (two questions) are left unscored.
+  \end{itemize}
+  \item \emph{Estimates (Mode B):} interval coverage, the share of gold values
+  that fall inside the reported 95\% interval.
+  \item \emph{Cost:} LLM tokens, LLM calls and wall-clock latency per answer.
+  \item \emph{Completeness check (H3):} detection rate and false-alarm rate.
+  An answer is incomplete when a gold evidence document was not retrieved,
+  and it is flagged when a scope found no relevant evidence.
+\end{itemize}
+
+\paragraph{Statistical tests.}
+All comparisons are paired on question ids, and each test is one-sided at
+$\alpha=0.05$:
+\begin{itemize}
+  \item \emph{H1:} Mann--Whitney $U$ for local versus global scores, plus
+  Fisher's exact test at the answer level.
+  \item \emph{H2, retrieval level:} Wilcoxon signed-rank tests of LensRAG
+  against each baseline.
+  \item \emph{H2, answer level:} an exact sign test on exact match.
+  \item \emph{H2, local questions:} a non-inferiority test that passes when
+  the lower bound of the 95\% interval of the difference is above $-0.05$.
+\end{itemize}
+Holm's correction is applied within each hypothesis. Confidence intervals are
+percentile bootstraps over questions (2{,}000 resamples, seed 42).
+
+\paragraph{Judge calibration.}
+The threshold of the BGE reranker relevance judge was chosen on a
+development split (odd question ids) and evaluated on the held-out even ids.
+A threshold of 0.05 gave held-out recall 0.834 and evidence F1 0.491.
+
+\section{Cost, Governance and Observability Instrumentation}
+\label{sec:instrumentation}
+
+\paragraph{Cost.}
+Every LLM call is counted by role: prompt and completion tokens, calls, and
+prompt-cache reads and writes for API providers. The counts are stored with
+each answer in \texttt{answers.csv}. Context tokens for retrieval and
+long-context methods are counted with \texttt{tiktoken cl100k\_base}. All
+experiments ran on local open-weight models, so the marginal monetary cost
+was zero and cost is reported in tokens and wall-clock time.
+
+\paragraph{Traces.}
+Every answer returns a trace with:
+\begin{itemize}
+  \item the plan;
+  \item the scopes searched and the coverage rounds;
+  \item the retrieved chunk ids;
+  \item the evidence records with their spans;
+  \item the computation mode and, for estimates, the sample size, strata and
+  intervals;
+  \item the verification report: completeness, conflicts, unverified numbers
+  and the NLI verdicts.
+\end{itemize}
+Run configurations (model per role, components, index, seeds) are written
+next to the results in \path{run_config.json} and
+\path{answers_config.json}.
+
+\paragraph{Governance controls.}
+\begin{itemize}
+  \item Answers cite their evidence.
+  \item Estimates are labelled as such and carry intervals.
+  \item Numbers that cannot be traced to evidence are flagged, not silently
+  shown.
+  \item Conflicts between documents are reported, not resolved silently.
+  \item Self-hosting keeps documents on the organisation's own hardware.
+\end{itemize}
+
+\section{Threats to Validity}
+\label{sec:threats}
+
+\paragraph{Construct validity.}
+\begin{itemize}
+  \item Evidence recall at document level is a precondition for a correct
+  answer, not a measure of correctness, which is why answers are also
+  scored.
+  \item Exact match is strict. Partially correct answers are credited by set
+  F1, and estimates by interval coverage.
+  \item Some gold answers depend on labels that exist only in the ledger
+  (sentiment, and some categories), and the text conveys them only through
+  wording. Every system must infer these labels.
+\end{itemize}
+
+\paragraph{Internal validity.}
+\begin{itemize}
+  \item LLM outputs vary between runs. Answers were generated once, at low
+  temperature (0--0.1), so no variance across runs is reported.
+  \item Two answers were retried after a decoding failure.
+  \item A configuration error disabled the non-LLM components during the
+  answer run (Section~\ref{sec:impl-env}).
+\end{itemize}
+
+\paragraph{External validity.}
+\begin{itemize}
+  \item The corpus is synthetic and template-generated, so its phrasing is
+  more regular than real enterprise text.
+  \item Policy versions 1.0 and 2.0 are derived from v3.0 and are not
+  historical.
+  \item Results on one fictional HR corpus may not transfer to other domains
+  or to real documents.
+\end{itemize}
+
+\paragraph{Conclusion validity.}
+\begin{itemize}
+  \item The question set is small (17 local and 72 global questions on
+  tier L), which limits statistical power.
+  \item Each question type has only 2--16 questions, so per-type results are
+  descriptive.
+\end{itemize}
+
+\chapter{Implementation}
+\label{ch:implementation}
+
+\section{Development Environment and Reproducibility}
+\label{sec:impl-env}
+
+\paragraph{Code.}
+LensRAG is a Python 3.13 package with the following layout:
+\begin{itemize}
+  \item \texttt{lensrag/}: chunking, retrieval, planning, aggregation,
+  estimation and evaluation;
+  \item \texttt{lensrag/full/}: the LLM pipeline, providers, model routing
+  and the local components;
+  \item \texttt{lensrag/domains/}: YAML domain configurations;
+  \item \texttt{tests/}: 108 unit tests;
+  \item \texttt{RUN\_EXPERIMENT.sh}: runs the whole experiment.
+\end{itemize}
+
+\paragraph{Running the experiment.}
+One command reproduces every result:
+\begin{lstlisting}[language=bash,caption={Reproducing the experiment.},label={lst:run}]
+LENSRAG_LLM_STACK=local-qwen bash RUN_EXPERIMENT.sh
+\end{lstlisting}
+The script runs in four stages, writing everything to one \texttt{results/}
+folder:
+\begin{enumerate}
+  \item the retrieval benchmark on tiers S, M and L;
+  \item building the tier-L index if it is missing;
+  \item answering the tier-L questions;
+  \item the H1--H3 analysis and its LaTeX tables.
+\end{enumerate}
+Answers are saved after each question, so an interrupted run resumes where it
+stopped. The seed is 42 throughout.
+
+\paragraph{Hardware and serving.}
+The experiments ran on an Apple-silicon Mac with 36\,GB of unified memory, on
+21--22 November 2026. LLMs were served by Ollama with a 32k-token context.
+The other models ran in PyTorch through sentence-transformers, transformers
+and spaCy.
+
+\begin{table}[htbp]
+\centering\small
+\caption{Models used in the experiments (\texttt{local-qwen} stack). All
+are open-weight and run locally.}
+\label{tab:used-models}
+\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{4.2cm} >{\raggedright\arraybackslash}X >{\raggedright\arraybackslash}p{3.6cm}@{}}
+\toprule
+Role & Model & Used in \\
+\midrule
+Classify & Qwen2.5-3B-Instruct & answer run \\
+Extract, map, verify & Qwen2.5-14B-Instruct & answer run \\
+Reduce, answer, baseline answers & Qwen2.5-32B-Instruct & answer run \\
+Dense embeddings & BAAI/bge-m3 & both runs \\
+Relevance judge / reranker & BAAI/bge-reranker-v2-m3 & retrieval run \\
+Entity NER & spaCy \texttt{en\_core\_web\_sm} 3.8 & implemented, not in answer run \\
+NLI verification & cross-encoder/nli-deberta-v3-large & implemented, not in answer run \\
+Sentiment soft labels & cardiffnlp/twitter-roberta-base-sentiment-latest & implemented, not in answer run \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\paragraph{Departures from the candidate models.}
+Table~\ref{tab:used-models} differs from Table~\ref{tab:models} in two ways.
+\begin{itemize}
+  \item \emph{Smaller strong models.} The 70B-class models do not fit in
+  36\,GB, so the strong roles use Qwen2.5-32B.
+  \item \emph{Components missing from the answer run.} The run set its model
+  stack through an environment variable. The LLM client read that variable,
+  but the pipeline configuration did not. The answer run therefore used the
+  routed Qwen models and the BGE-M3 index, but not the reranker, NER, NLI or
+  sentiment components, and the \texttt{rag\_topk} baseline used TF-IDF
+  rather than BGE-M3 for its dense half.
+\end{itemize}
+The retrieval benchmark passed its models explicitly and is unaffected. The
+fault has since been fixed and covered by a test. The four components are
+implemented and unit-tested, but their effect on answer accuracy is not
+measured in this report.
+
+\section{Key Components}
+\label{sec:components}
+
+\paragraph{Computing in code, not in the LLM.}
+The extraction prompt asks only for records with a verbatim span. Every
+number in a Mode A answer is computed from those records by a function such
+as \path{aggregate_records}, so a wrong total can always be traced to a
+wrong or missing record rather than to LLM arithmetic.
+
+\paragraph{Answers read from the estimate.}
+In a first version, the answer model was asked to restate Mode B estimates in
+the gold format. The 3B--32B models often replied ``unsupported'' even when
+an estimate existed. In one case the estimate (3.43) equalled the gold value.
+Mode B answers are now read directly from the estimate object, which returns
+a count or a share as the question asks.
+
+\paragraph{Repetition aborts.}
+Under greedy decoding, Qwen models occasionally fall into a repetition loop,
+which Ollama aborts. Because the decoding is deterministic, a plain retry
+repeats the failure. The client therefore retries once with temperature 0.4
+and a frequency penalty, and only for this error.
+
+\paragraph{Premises for NLI.}
+NLI models read Markdown tables poorly, and chunks are longer than their
+512-token input. The verifier therefore builds a short premise for each
+claim: the context header (scope, version, entities) plus the four lines most
+similar to the claim, with table rows rewritten as sentences. On a worked
+example, a true claim about German leave went from ``unsupported'' to
+entailed (0.997), and a false claim was contradicted (0.998).
+
+\section{Deployment}
+\label{sec:deployment}
+
+LensRAG runs as a command-line tool (\texttt{lensrag.cli ask}) over a
+persisted ChromaDB index. Provider selection is by environment variable:
+\begin{itemize}
+  \item Claude via the Anthropic API, with prompt caching and model
+  fallbacks;
+  \item any OpenAI-compatible endpoint;
+  \item a local Ollama server.
+\end{itemize}
+A self-hosted deployment needs only a server with about 36\,GB of
+accelerator memory for the 32B model, or less with the single-model
+\texttt{local-qwen-14b} stack. The documents never leave the machine.
+Production concerns (autoscaling, monitoring, rollback) are out of scope
+(Section~\ref{sec:scope}).
+
+\chapter{Results}
+\label{ch:results}
+
+\section{Main Findings}
+\label{sec:findings}
+
+Table~\ref{tab:main} summarises the headline results on tier L, the largest
+corpus, where the differences between methods are greatest.
+
+\begin{table}[htbp]
+\centering\small
+\caption{Main results on tier L (89 questions: 17 local, 72 global). Retrieval
+columns: global questions. Answer columns: generator Qwen2.5-32B; LensRAG
+uses the routed \texttt{local-qwen} stack. At the answer level, standard RAG
+used BM25 + TF-IDF rather than BM25 + BGE-M3 (Section~\ref{sec:impl-env}).
+Best value per column in bold.}
+\label{tab:main}
+\begin{tabular}{@{}lrrrrrr@{}}
+\toprule
+& \multicolumn{2}{c}{Retrieval (global)} & \multicolumn{3}{c}{Answer exact match / set F1} & \\
+\cmidrule(lr){2-3}\cmidrule(lr){4-6}
+Method & Recall & F1 & Global EM & Global F1 & Local EM & Tokens / q \\
+\midrule
+BM25 top-10 & 0.372 & 0.309 & -- & -- & -- & 2{,}507 \\
+Hybrid top-10 (standard RAG) & 0.357 & 0.330 & \textbf{0.282} & 0.351 & \textbf{1.000} & 2{,}676 \\
+Long context 128k & 0.116 & 0.036 & -- & -- & -- & 122{,}456 \\
+Long context 1M & 0.592 & 0.053 & -- & -- & -- & 994{,}634 \\
+LensRAG & 0.714 & 0.561 & \textbf{0.282} & \textbf{0.449} & 0.765 & 78{,}759 \\
+LensRAG + judge & \textbf{0.772} & \textbf{0.579} & -- & -- & -- & -- \\
+\midrule
+Full corpus (oracle) & 0.995 & -- & -- & -- & -- & 2{,}572{,}335 \\
+\bottomrule
+\end{tabular}
+
+\smallskip
+\parbox{\textwidth}{\footnotesize Tokens / q: retrieved context tokens for
+retrieval-only methods; total LLM tokens per answer for the two answer-level
+methods. Dashes mark combinations not run at that level.}
+\end{table}
+
+\paragraph{RQ1 / H1: standard RAG on global versus local questions.}
+At the answer level the gap is large and significant.
+\begin{itemize}
+  \item On tier L, standard RAG answers every local question correctly (17 of
+  17) but only 28.2\% of global questions. The gap is 0.718 (95\% CI
+  [0.606, 0.817], Fisher's exact $p<10^{-7}$).
+  \item At the retrieval level the evidence-recall gap is significant only on
+  tier S (BM25: local 1.000 versus global 0.841, Holm $p=0.010$; hybrid:
+  1.000 versus 0.771, $p<0.001$).
+  \item On tiers M and L, top-10 retrieval misses most evidence for local and
+  global questions alike, so the recall gap is not significant. Local
+  answers are still correct because one chunk is usually enough to answer
+  them.
+  \item Long-context prompting follows the predicted pattern. A 128k window
+  holds the whole of tier S (global recall 1.000), but only 0.186 of the
+  needed evidence on M and 0.116 on L. Even a 1M window reaches only 0.592
+  on L.
+\end{itemize}
+H1 is \textbf{supported} at the answer level, and supported at the retrieval
+level on tier S.
+
+\paragraph{RQ2 / H2: LensRAG on global questions.}
+At the retrieval level LensRAG is significantly better than every baseline
+that fits a realistic context:
+\begin{itemize}
+  \item On tier L, its global evidence recall is 0.714 (0.772 with the
+  judge) against 0.357 for hybrid top-10, Wilcoxon Holm $p<0.001$.
+  \item It roughly doubles evidence recall and F1 on tiers L and M.
+  \item It beats the 128k and 1M long-context baselines on F1 at every tier,
+  while reading 8k rather than 122k--995k tokens.
+  \item On local questions its recall is non-inferior to standard RAG on all
+  tiers: equal on S and higher on M and L.
+\end{itemize}
+At the answer level the advantage does not carry through to exact match
+(Table~\ref{tab:h2-answers}):
+\begin{itemize}
+  \item global exact match is tied at 0.282, with 11 wins and 11 losses
+  (sign test $p=0.58$);
+  \item global set F1 is higher for LensRAG (0.449 versus 0.351), so its
+  answers are more often partly right;
+  \item on local questions LensRAG is significantly worse (0.765 versus
+  1.000, difference $-0.235$, 95\% CI $[-0.471, -0.059]$).
+\end{itemize}
+H2 is therefore \textbf{supported at the retrieval level} and \textbf{not
+supported at the answer level}.
+
+\begin{table}[htbp]
+\centering\small
+\caption{H2 at the answer level (tier L): exact match, LensRAG minus standard
+RAG, paired by question. Q054 (free text) is excluded.}
+\label{tab:h2-answers}
+\begin{tabular}{@{}lrrrrlrrr@{}}
+\toprule
+Scope & $n$ & LensRAG & Std RAG & Diff & 95\% CI & Wins & Losses & $p$ \\
+\midrule
+Global & 71 & 0.282 & 0.282 & 0.000 & [$-0.127$, 0.127] & 11 & 11 & 0.584 \\
+Local & 17 & 0.765 & 1.000 & $-0.235$ & [$-0.471$, $-0.059$] & 0 & 4 & 1.000 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{RQ3 / H3: completeness and conflict checks.}
+\begin{itemize}
+  \item \emph{Completeness flag} (retrieval level, \texttt{lensrag\_rerank}):
+  it catches 27--33\% of incomplete retrievals (8 of 30 on L, 6 of 18 on M,
+  1 of 3 on S). Its false-alarm rate is 0--12\%.
+  \item \emph{Conflict questions:} both methods answer half correctly (0.50).
+  All the documents needed to see a conflict are retrieved for only 20\% of
+  conflict questions on L and 40\% on M.
+\end{itemize}
+H3 requires detection above 50\%, so it is \textbf{not supported}. Precision
+and recall of the conflict flag itself, against the twelve planted conflicts,
+were not measured.
+
 \section{Ablations and Sensitivity}
+\label{sec:ablations}
+
+\paragraph{Corpus size.}
+LensRAG's advantage over top-$k$ RAG grows with the corpus:
+\begin{itemize}
+  \item on S, both reach high global recall (0.994 versus 0.771--0.841) and
+  the F1 difference is not significant;
+  \item on M the recall difference is $+0.41$;
+  \item on L it is $+0.36$ (Table~\ref{tab:tiers}).
+\end{itemize}
+The 1M long-context window beats LensRAG on recall at M (0.992), where the
+whole tier fits, but falls to 0.592 on L, where it does not.
+
+\begin{table}[htbp]
+\centering\small
+\caption{Global evidence recall by corpus tier (retrieval level).}
+\label{tab:tiers}
+\begin{tabular}{@{}lrrrrr@{}}
+\toprule
+Tier & Hybrid top-10 & LensRAG & LensRAG + judge & Long context 128k & Long context 1M \\
+\midrule
+S & 0.771 & \textbf{0.994} & 0.976 & 1.000 & 1.000 \\
+M & 0.252 & 0.662 & 0.733 & 0.186 & \textbf{0.992} \\
+L & 0.357 & 0.714 & \textbf{0.772} & 0.116 & 0.592 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{Coverage loop with the relevance judge.}
+Adding the coverage loop with the BGE reranker judge raises tier-L global
+recall from 0.714 to 0.772 and F1 from 0.561 to 0.579. The cost is 2.7 times
+the context (21.8k tokens) and a median retrieval latency of 3.6\,s instead
+of 0.2\,s. On M the judge raises recall but lowers F1 (0.415 to 0.374).
+
+\paragraph{Mode B scoring.}
+Reading Mode B answers from the estimate rather than through the LLM
+corrected one answer that had been lost, out of 15 estimates. The other
+estimates were wrong in value, not in format (Section~\ref{sec:errors}).
+
+\paragraph{Not run.}
+The planned ablations of the context header, entity scoping, chunk size and
+stale-document inclusion were not run. Nor was the answer-level contribution
+of the four non-LLM components. All are left to future work.
+
 \section{Cost--Performance Trade-offs}
-Present the Pareto frontier (accuracy vs.\ cost) — a required figure.
+\label{sec:cost}
+
+Figure~\ref{fig:cost} plots global evidence recall against the context each
+method passes to the generator on tier L. Four methods lie on the Pareto
+frontier:
+\begin{itemize}
+  \item BM25 top-10;
+  \item LensRAG;
+  \item LensRAG with the judge;
+  \item the full-corpus oracle.
+\end{itemize}
+LensRAG reaches 72\% of the oracle's recall with 0.3\% of its context. The
+long-context baselines are dominated: a 1M window reads 120 times more tokens
+than LensRAG for lower recall.
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.9\textwidth]{figures/cost_recall_L.pdf}
+\caption{Cost--performance on tier L: global evidence recall against mean
+context tokens per question (log scale). The dashed line is the Pareto
+frontier.}
+\label{fig:cost}
+\end{figure}
+
+The answer level reverses the cost picture. Standard RAG makes one LLM call
+per question (2.7k tokens, median 21\,s). LensRAG makes 34 calls on average:
+\begin{itemize}
+  \item 78.8k tokens per question (91.7k for global questions, 23.9k for
+  local);
+  \item a median of 6.9 minutes per answer;
+  \item a 95th percentile of 26 minutes, driven by Mode B estimates, which
+  label 150 records three times each;
+  \item 15.0 hours for all 89 answers, against 0.6 hours for standard RAG.
+\end{itemize}
+With local models this cost is time, not money. With an API model it would be
+about 30 times the token cost of standard RAG, for no gain in exact match in
+this configuration.
+
 \section{Error Analysis}
-Qualitative taxonomy of failures with counts.
+\label{sec:errors}
+
+LensRAG answered 33 of 88 scored questions exactly. The 55 misses fall into
+four groups (Table~\ref{tab:errors}).
+
+\begin{table}[htbp]
+\centering\small
+\caption{Causes of LensRAG's exact-match misses on tier L. ``Evidence
+missed'' uses the retrieval benchmark's LensRAG run as a proxy, which has the
+same index and planner.}
+\label{tab:errors}
+\begin{tabularx}{\textwidth}{@{}lrX@{}}
+\toprule
+Cause & $n$ & Typical question types and examples \\
+\midrule
+Evidence missed & 21 & version difference (5), temporal (3), rank (3), theme, conflict; e.g.\ Q048 found 1 of 5 future-dated circulars \\
+Evidence found, wrong value & 13 & local (3), count, extremum; e.g.\ Q008 and Q012 averaged several values for a single-country question \\
+Mode B estimate off & 13 & count, aggregate, sentiment shift; e.g.\ Q077 estimated 417 tickets where the gold is 42 \\
+Partly right (set F1 $>0$) & 8 & theme (4), filter, rank; e.g.\ Q019 returned the four correct countries plus one extra \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{itemize}
+  \item \emph{Local questions lost.} Four local questions were answered wrongly.
+  \begin{itemize}
+    \item In two (Q008, Q012), the answer is an average of several values
+    (9.33 versus the gold 6). This suggests the single-country lookup was
+    treated as an aggregate. The question type chosen by the classifier is
+    not recorded in the answer log, so this is inferred, not observed.
+    \item In one (Q014), the answer took a stale handbook value (INR\,500)
+    instead of the current policy (INR\,600).
+  \end{itemize}
+  Standard RAG answers the same questions directly from the top chunk.
+  \item \emph{Sampled labels are biased.} The gold value fell inside the
+  reported 95\% interval for only half of the 18 answers that carry an
+  interval, against 95\% for well-calibrated intervals. The intervals
+  express sampling error but not labelling error. When the 14B model labels
+  records systematically wrongly, the interval is narrow and wrong. Examples
+  are Q080 (estimated share 0.76, gold 0.04) and Q089 (1{,}087 versus 819).
+  \item \emph{Temporal and version questions.} LensRAG scored 0.20 on
+  temporal questions against 0.60 for standard RAG, and in most misses the
+  evidence was not retrieved. A likely cause is the scoping step. It
+  excludes superseded documents unless the question names a version, but
+  temporal questions name a date instead, so the circular or earlier
+  version that holds the answer can be filtered out.
+  \item \emph{Where LensRAG helped.} It was more accurate on count (0.38
+  versus 0.12) and aggregate questions (0.20 versus 0.00), and had higher
+  set F1 on theme (0.61 versus 0.39), version-difference (0.54 versus 0.33)
+  and rank questions. These are the question types that need many
+  documents.
+\end{itemize}
 
 \chapter{Discussion}
+\label{ch:discussion}
+
 \section{Interpretation}
+\label{sec:interpretation}
+
+The results separate two claims that are often merged:
+\begin{itemize}
+  \item \emph{Coverage.} LensRAG solves the coverage problem it was designed
+  for. Entity-scoped retrieval over context-enriched chunks roughly doubles
+  the evidence that reaches the generator on large corpora, at a small
+  fraction of long-context cost.
+  \item \emph{Correctness.} Coverage alone does not produce correct
+  aggregate answers. Between retrieval and the answer sit classification,
+  extraction, labelling and formatting, each done here by a 3B--32B local
+  model. Errors at each step compound: a pipeline of individually reasonable
+  steps can equal a single top-$k$ call in accuracy while costing 30 times
+  more.
+\end{itemize}
+The error analysis shows where the losses occur:
+\begin{itemize}
+  \item routing local questions down the global path;
+  \item filtering out superseded documents that temporal questions need;
+  \item treating sampling error as the only uncertainty in estimates.
+\end{itemize}
+Each is a design choice that can be changed, rather than a limit of the
+approach.
+
 \section{Implications for Practitioners}
-Concrete recommendations; a decision framework if applicable.
+\label{sec:practice}
+
+\begin{itemize}
+  \item \textbf{Route conservatively.} Send a question down the aggregation
+  path only when it is clearly global, and default to standard RAG
+  otherwise. Standard RAG answered every local question correctly.
+  \item \textbf{Use coverage retrieval when a corpus outgrows the context
+  window.} When the whole corpus fits (tier S here), long-context prompting
+  or top-$k$ retrieval with a larger $k$ is simpler and as good.
+  \item \textbf{Treat estimates from LLM labels as biased, not only noisy.}
+  Validate the labelling model on a small hand-labelled set before reporting
+  intervals.
+  \item \textbf{Size models to the step.} Small models are adequate for
+  extraction with verbatim spans, but classification errors are costly
+  because they change the whole path. The classifier is the step where a
+  stronger model pays off.
+  \item \textbf{Measure answers, not only retrieval.} Evaluating retrieval
+  alone would have shown a clear win here.
+\end{itemize}
+
 \section{Implications for Research}
+\label{sec:research-implications}
+
+Benchmarks for corpus-level question answering should report retrieval
+coverage and answer accuracy separately, since they diverge sharply here.
+Interval coverage is a useful and rarely reported check of estimate
+calibration. The synthetic, ledger-first corpus made exact answers possible
+for counting, ranking and sentiment-shift questions over thousands of
+records, which hand-annotated corpora cannot provide at this scale.
+
 \section{Limitations}
+\label{sec:limitations}
+
+\begin{itemize}
+  \item \textbf{Configuration.} The answer-level run used local open-weight
+  models up to 32B and omitted the reranker, NER, NLI and sentiment
+  components. Results with stronger or API models, or with all components,
+  may differ.
+  \item \textbf{Runs and sample size.} Answers were generated in a single
+  run. The question set is small, with 72 global questions on tier L.
+  \item \textbf{Baselines not run.} No GlobalRAG-style baseline and no
+  answer-level long-context baseline were run.
+  \item \textbf{Corpus.} The corpus is synthetic and template-generated, so
+  its phrasing is more regular than real documents.
+  \item \textbf{Conflict and faithfulness measures.} Conflict-flag precision
+  and recall, and claim-level faithfulness, were not measured against human
+  judgements.
+\end{itemize}
+
 \section{Ethical, Legal and Societal Considerations}
-Privacy, safety, regulatory mapping (EU AI Act, DPDP, sector rules) where
-relevant.
+\label{sec:ethics}
+
+\paragraph{Data.}
+The corpus is fictional and contains no personal data. In a real deployment,
+HR documents such as grievances, exit interviews and survey comments are
+personal data under regulations such as the GDPR and India's Digital
+Personal Data Protection Act (DPDP).
+
+\paragraph{Design choices that help.}
+\begin{itemize}
+  \item Self-hosting keeps documents on the organisation's infrastructure.
+  \item Aggregate answers expose counts and shares, not individual records,
+  although small groups can still identify people. A minimum group size
+  should be enforced.
+  \item Estimates are labelled as such and carry intervals.
+\end{itemize}
+
+\paragraph{Risks and regulation.}
+Automated sentiment and theme analysis of employee feedback could be used for
+surveillance or to judge individuals. LensRAG should be used for
+organisation-level questions, with human review of any decision. Under the
+EU AI Act, AI systems used to monitor or evaluate workers are classed as
+high-risk.
 
 \chapter{Conclusion and Future Work}
+\label{ch:conclusion}
+
 \section{Summary of Contributions}
+\label{sec:summary}
+
+\begin{itemize}
+  \item \textbf{Benchmark.} An 89-question HR benchmark over a 2.6M-token
+  synthetic corpus in three tiers, with answers computed from a ledger.
+  \item \textbf{Method.} LensRAG, a schema-free method that combines
+  context-enriched chunks, entity-scoped coverage retrieval, computation in
+  code, sampled estimates with intervals, consistency-filtered generation,
+  and verification. It has pluggable models per role and runs fully on
+  local hardware.
+  \item \textbf{Findings.}
+  \begin{itemize}
+    \item Standard RAG answers local questions far better than global ones
+    (1.00 versus 0.28 exact match).
+    \item LensRAG doubles global evidence recall on large corpora at 0.3\% of
+    long-context cost.
+    \item With local models this did not raise exact match. Set F1 improved,
+    local accuracy fell, and the failure modes are identified.
+  \end{itemize}
+  \item \textbf{Software.} An open, tested implementation (108 tests) with a
+  one-command experiment.
+\end{itemize}
+
 \section{Future Work}
+\label{sec:future}
+
+\begin{enumerate}
+  \item Re-run the answer level with all components enabled, and with a
+  stronger API model for classification and answering, to separate method
+  from model capacity.
+  \item Route conservatively: fall back to standard RAG unless the question
+  is clearly global, and add a check that a local question returns a single
+  value.
+  \item Keep superseded documents in scope for date questions, and resolve
+  them by effective date.
+  \item Calibrate Mode B intervals for labelling error by checking the
+  labeller on a hand-labelled sample and widening the intervals accordingly.
+  \item Measure conflict-flag precision and recall against the twelve
+  planted conflicts.
+  \item Add a GlobalRAG-style baseline, repeat runs with several seeds, and
+  run the planned ablations.
+  \item Evaluate on a second domain using the legal configuration.
+\end{enumerate}
+
 \section{Publication Plan}
-Target venue(s), arXiv category (e.g., cs.AI, cs.CL, cs.SE), and the
-condensed paper's structure.
+\label{sec:publication}
+
+The target is an arXiv preprint (cs.CL, cross-listed to cs.IR) followed by a
+workshop on retrieval or enterprise NLP. The condensed paper will have six
+parts:
+\begin{enumerate}
+  \item problem and benchmark;
+  \item method;
+  \item retrieval-level results across tiers;
+  \item answer-level results and error analysis;
+  \item cost;
+  \item limitations.
+\end{enumerate}
+The corpus, gold set and code will be released with it.
 
 %---------------------------------------------------------------------
 % BIBLIOGRAPHY

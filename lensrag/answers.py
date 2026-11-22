@@ -13,7 +13,7 @@ Methods:
   lensrag             the full LensRAG pipeline (lensrag.full), answer converted to the gold format
 """
 from __future__ import annotations
-import ast, json, re, time
+import ast, json, os, re, time
 from pathlib import Path
 import pandas as pd
 from .aggregation import normalize_label
@@ -58,10 +58,18 @@ def _num_eq(a, b):
     return a is not None and b is not None and abs(a - b) <= max(0.01 * abs(b), 0.005)
 
 
+_CURRENCY = "₹$€£"
+_AMOUNT = re.compile(rf"^\s*[{_CURRENCY}]?\s*-?\d[\d,]*(?:\.\d+)?\s*$")
+
+
 def _item_eq(pred, gold, ratio=False):
     g, p = _num(gold, ratio), _num(pred, ratio)
     if isinstance(gold, (int, float)) and not isinstance(gold, bool):
         return _num_eq(p, g)
+    if isinstance(gold, str) and _AMOUNT.match(gold) and _AMOUNT.match(str(pred)):
+        # "₹600" vs "600": the same amount; a different currency symbol is still wrong.
+        gs, ps = [c for c in gold if c in _CURRENCY], [c for c in str(pred) if c in _CURRENCY]
+        return _num_eq(p, g) and (not ps or ps == gs)
     return _norm(pred) == _norm(gold) and _norm(gold) != ""
 
 
@@ -311,6 +319,7 @@ def run_answers(zip_path, extract_dir, output, tier="L", methods=("rag_topk", "l
     index = None
     pipe = None
     from .full.pipeline import LensRAGPipeline, PipelineConfig, apply_stack_components
+    llm_stack = llm_stack or os.getenv("LENSRAG_LLM_STACK") or None  # same source as create_llm
     cfg = apply_stack_components(PipelineConfig(tier=tier, domain=dom.source, llm_stack=llm_stack))
     stack_embedding = cfg.embedding_model if llm_stack and not lexical_fallback else None
     if "rag_topk" in methods:

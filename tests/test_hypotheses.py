@@ -238,3 +238,13 @@ class EstimateAnswerTests(unittest.TestCase):
     def test_no_estimate_or_unfitting_shape_falls_back(self):
         self.assertIsNone(answer_from_estimate({}, "q", "value"))
         self.assertIsNone(answer_from_estimate(self.PERIODS, "q", "value"))
+
+
+class CurrencyScoringTests(unittest.TestCase):
+    def test_amount_without_symbol_matches_but_another_currency_does_not(self):
+        from lensrag.answers import score_answer
+        self.assertEqual(score_answer("600", "₹600", "value"), (1.0, 1.0))
+        self.assertEqual(score_answer(40000, "₹40,000", "value"), (1.0, 1.0))
+        self.assertEqual(score_answer("$600", "₹600", "value"), (0.0, 0.0))
+        self.assertEqual(score_answer("700", "₹600", "value"), (0.0, 0.0))
+        self.assertEqual(score_answer("₹200 (from ₹400)", "₹200 (from ₹400 to ₹600)", "value"), (0.0, 0.0))

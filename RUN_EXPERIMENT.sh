@@ -38,7 +38,7 @@ if [[ -n "${ANTHROPIC_API_KEY:-}" || -n "${ANTHROPIC_AUTH_TOKEN:-}" || -n "${LEN
   if [[ ! -f "$INDEX_DIR/metadata.json" ]]; then
     python -m lensrag.cli build-index --tier L --index-dir "$INDEX_DIR" --embedding-model "$EMBEDDING"
   fi
-  python -m lensrag.cli answers --tier L --output "$RESULTS" --index-dir "$INDEX_DIR" --methods "${ANSWER_METHODS[@]}"
+  python -m lensrag.cli answers --tier L --output "$RESULTS" --index-dir "$INDEX_DIR" --methods "${ANSWER_METHODS[@]}" ${LENSRAG_LLM_STACK:+--llm-stack "$LENSRAG_LLM_STACK"}
 else
   echo "Skipping answer-level evaluation (H2 exact match / set F1): set ANTHROPIC_API_KEY (Claude), OPENAI_API_KEY, or LENSRAG_LLM_STACK=local-qwen."
 fi

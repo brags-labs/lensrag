@@ -181,3 +181,12 @@ class RepeatRetryTests(unittest.TestCase):
         llm.client = NS(chat=NS(completions=NS(create=lambda **kw: (_ for _ in ()).throw(RuntimeError("context too long")))))
         with self.assertRaises(RuntimeError):
             llm.json("s", "u")
+
+
+class StackFromEnvTests(unittest.TestCase):
+    def test_stack_set_only_in_the_environment_still_switches_components_on(self):
+        with mock.patch.dict(os.environ, {"LENSRAG_LLM_STACK": "local-qwen"}):
+            cfg = apply_stack_components(PipelineConfig())
+        self.assertEqual(cfg.llm_stack, "local-qwen")
+        self.assertEqual(cfg.reranker_model, LOCAL_COMPONENTS["reranker_model"])
+        self.assertEqual(cfg.nli_model, LOCAL_COMPONENTS["nli_model"])

@@ -1,4 +1,5 @@
 from __future__ import annotations
+import os
 from dataclasses import dataclass
 from pathlib import Path
 import json, time
@@ -55,6 +56,9 @@ DEFAULT_EMBEDDING_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
 
 def apply_stack_components(cfg):
     """Fill component fields the caller left unset from the stack's preset (full/routing.py)."""
+    # The stack can come from the config or, like the LLM client (providers.create_llm), from
+    # LENSRAG_LLM_STACK, so a run configured by environment gets the same components.
+    cfg.llm_stack = cfg.llm_stack or os.getenv("LENSRAG_LLM_STACK") or None
     if not (cfg.llm_stack and cfg.components_from_stack):
         return cfg
     for name, value in stack_components(cfg.llm_stack).items():

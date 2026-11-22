@@ -225,3 +225,10 @@ artifacts/
 data/extracted/
 # Local working notes, kept out of the repository
 docs/ALGORITHM_COMPARISON.md
+
+# LaTeX build files (report PDF is committed)
+docs/report/*.blg
+docs/report/*.aux
+docs/report/*.bbl
+docs/report/*.out
+docs/report/*.toc

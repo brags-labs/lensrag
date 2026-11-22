@@ -157,10 +157,10 @@ Not measured: whether a model actually uses evidence placed in a long context (n
 
 | Tier | Method | Scope | n | Exact match | Set F1 | Interval coverage | n with interval | Tokens | p50 s |
 |---|---|---|---:|---:|---:|---:|---:|---:|---:|
-| L | lensrag | global | 72 | 0.268 | 0.435 | 0.500 | 18 | 91,721 | 595.60 |
-| L | lensrag | local | 17 | 0.706 | 0.706 | – | 0 | 23,862 | 104.42 |
-| L | rag_topk | global | 72 | 0.268 | 0.337 | – | 0 | 2,810 | 22.22 |
-| L | rag_topk | local | 17 | 0.882 | 0.882 | – | 0 | 2,104 | 15.73 |
+| L | lensrag | global | 72 | 0.282 | 0.449 | 0.500 | 18 | 91,721 | 595.60 |
+| L | lensrag | local | 17 | 0.765 | 0.765 | – | 0 | 23,862 | 104.42 |
+| L | rag_topk | global | 72 | 0.282 | 0.351 | – | 0 | 2,810 | 22.22 |
+| L | rag_topk | local | 17 | 1.000 | 1.000 | – | 0 | 2,104 | 15.73 |
 
 ## H3: completeness and conflict checks flag incomplete or conflicting answers
 
