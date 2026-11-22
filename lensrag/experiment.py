@@ -4,7 +4,7 @@ from pathlib import Path
 import pandas as pd
 from .data import ensure_extracted,load_documents,load_gold,chunk_document
 from .embeddings import DenseEncoder,DEFAULT_EMBEDDING_MODEL
-from .retrieval import HybridIndex,method_retrieve,route_query,CrossEncoderJudge
+from .retrieval import HybridIndex,method_retrieve,route_query,CrossEncoderJudge,judge_threshold_for
 from .planning import build_inventory
 from .domain import Domain,load_domain
 from .metrics import evidence_recall,evidence_precision,set_f1,expand_gold_ids
@@ -70,7 +70,7 @@ def tier_index(docs, tier, store_dir=None, semantic="tfidf", encoder=None, domai
     return index,chunks,{"source":source,"load_or_build_chunks_ms":(t1-t0)*1000,"in_memory_index_ms":(t2-t1)*1000}
 
 def run_experiment(zip_path, extract_dir, tiers=("S","M","L"), top_k=10, output=Path("results"), rerank=False,
-                   store_dir=None, semantic="tfidf", embedding_model=DEFAULT_EMBEDDING_MODEL, judge_threshold=-4.0,
+                   store_dir=None, semantic="tfidf", embedding_model=DEFAULT_EMBEDDING_MODEL, judge_threshold=None,
                    domain="hr", long_context=True, judge_model="cross-encoder/ms-marco-MiniLM-L-6-v2"):
     domain=load_domain(domain) if not isinstance(domain,Domain) else domain
     zip_path=Path(zip_path); extract_dir=Path(extract_dir); output=Path(output)
@@ -82,7 +82,7 @@ def run_experiment(zip_path, extract_dir, tiers=("S","M","L"), top_k=10, output=
     judge=None
     encoder=DenseEncoder(embedding_model) if semantic=="dense" else None
     if rerank:
-        judge=CrossEncoderJudge(model_name=judge_model,threshold=judge_threshold)
+        judge=CrossEncoderJudge(model_name=judge_model,threshold=judge_threshold_for(judge_model,judge_threshold))
         judge.model  # load up front so model loading is not counted as query latency
         methods.append("lensrag_rerank")
     lc_methods=list(LONG_CONTEXT_WINDOWS) if long_context else []

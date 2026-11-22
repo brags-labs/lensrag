@@ -140,6 +140,20 @@ def coverage_retrieve(index, plan, scopes, judge=None, page=5, max_rounds=4):
     return hits,telemetry
 
 
+# Relevance thresholds per judge model. Scores are on different scales (MS MARCO gives logits,
+# the BGE reranker probabilities), so each is calibrated: MS MARCO on the benchmark, BGE on odd
+# question ids with even ones held out (results/archive/dense_bge_m3/judge_calibration.csv, docs/LOCAL_MODELS.md).
+JUDGE_THRESHOLDS = {"cross-encoder/ms-marco-MiniLM-L-6-v2": -4.0, "BAAI/bge-reranker-v2-m3": 0.05}
+
+
+def judge_threshold_for(model_name, threshold=None):
+    if threshold is not None:
+        return threshold
+    if model_name not in JUDGE_THRESHOLDS:
+        raise ValueError(f"No calibrated threshold for {model_name}: pass --judge-threshold")
+    return JUDGE_THRESHOLDS[model_name]
+
+
 class CrossEncoderJudge:
     """Passage relevance judge for the benchmark: a cross-encoder with an absolute cut-off.
 

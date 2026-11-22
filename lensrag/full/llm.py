@@ -28,12 +28,25 @@ class LLMClient:
             self.usage["prompt_tokens"]+=getattr(u,"prompt_tokens",0) or 0
             self.usage["completion_tokens"]+=getattr(u,"completion_tokens",0) or 0
 
+    def _create(self, **kw):
+        """chat.completions.create with one retry when a local server aborts a repetition loop
+        (Ollama: "token repeat limit reached"). Greedy decoding loops the same way every time,
+        so the retry samples a little and penalises repeated tokens."""
+        try:
+            return self.client.chat.completions.create(model=self.model,**kw)
+        except Exception as e:
+            if "repeat" not in str(e).lower():
+                raise
+            self.usage["repeat_retries"]=self.usage.get("repeat_retries",0)+1
+            kw.update(temperature=max(kw.get("temperature") or 0,0.4),frequency_penalty=0.5,max_tokens=kw.get("max_tokens") or 2048)
+            return self.client.chat.completions.create(model=self.model,**kw)
+
     def json(self, system, user, temperature=0):
-        r=self.client.chat.completions.create(model=self.model,temperature=temperature,response_format={"type":"json_object"},messages=[{"role":"system","content":system},{"role":"user","content":user}])
+        r=self._create(temperature=temperature,response_format={"type":"json_object"},messages=[{"role":"system","content":system},{"role":"user","content":user}])
         self._track(r)
         return json.loads(r.choices[0].message.content)
 
     def text(self, system, user, temperature=0.1):
-        r=self.client.chat.completions.create(model=self.model,temperature=temperature,messages=[{"role":"system","content":system},{"role":"user","content":user}])
+        r=self._create(temperature=temperature,messages=[{"role":"system","content":system},{"role":"user","content":user}])
         self._track(r)
         return r.choices[0].message.content

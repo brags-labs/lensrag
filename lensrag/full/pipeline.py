@@ -15,7 +15,8 @@ from ..synthesis import consistent_insights
 from ..retrieval import coverage_retrieve
 from .index import DenseEncoder, PersistentHybridIndex, corpus_fingerprint
 from .providers import create_llm
-from .routing import role as _role
+from .routing import role as _role, stack_components
+from .local_models import Reranker, EntityNER, NLIVerifier, SentimentClassifier
 
 @dataclass
 class PipelineConfig:
@@ -39,16 +40,46 @@ class PipelineConfig:
     reduce_runs: int = 5
     support_threshold: float = 0.5
     seed: int = 42
+    # Open-source components from Table 3.1 (full/local_models.py). None = off. The local stacks
+    # (llm_stack="local-qwen", ...) switch them on; see routing.LOCAL_COMPONENTS.
+    reranker_model: str | None = None   # Search + rerank for local questions, e.g. BAAI/bge-reranker-v2-m3
+    rerank_candidates: int = 20         # passages retrieved before reranking down to page_size
+    spacy_model: str | None = None      # NER fallback for entity selection, e.g. en_core_web_sm
+    nli_model: str | None = None        # NLI claim verification, e.g. cross-encoder/nli-deberta-v3-large
+    sentiment_model: str | None = None  # per-record sentiment soft labels in Mode B
+    components_from_stack: bool = True  # fill unset component fields from the stack's preset
+
+
+DEFAULT_EMBEDDING_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
+
+
+def apply_stack_components(cfg):
+    """Fill component fields the caller left unset from the stack's preset (full/routing.py)."""
+    if not (cfg.llm_stack and cfg.components_from_stack):
+        return cfg
+    for name, value in stack_components(cfg.llm_stack).items():
+        current = getattr(cfg, name, None)
+        if name == "embedding_model":
+            if current == DEFAULT_EMBEDDING_MODEL and value:
+                cfg.embedding_model = value
+        elif current is None:
+            setattr(cfg, name, value)
+    return cfg
 
 class LensRAGPipeline:
     """End-to-end LensRAG (steps 3-9): plan, decompose, cover, filter+extract, compute, verify, answer."""
     def __init__(self, index, inventory, llm, config):
-        self.index,self.inventory,self.llm,self.config=index,inventory,llm,config
+        self.index,self.inventory,self.llm,self.config=index,inventory,llm,apply_stack_components(config)
+        c=self.config
+        self.reranker=Reranker(c.reranker_model) if c.reranker_model else None
+        self.ner=EntityNER(c.spacy_model) if c.spacy_model else None
+        self.nli=NLIVerifier(c.nli_model) if c.nli_model else None
+        self.sentiment=SentimentClassifier(c.sentiment_model) if c.sentiment_model else None
         self.domain=load_domain(inventory.get("domain_source") or inventory.get("domain") or config.domain)
 
     @classmethod
     def build(cls, corpus_zip, extract_dir, config=None, use_llm=True):
-        cfg=config or PipelineConfig(); domain=load_domain(cfg.domain)
+        cfg=apply_stack_components(config or PipelineConfig()); domain=load_domain(cfg.domain)
         if cfg.corpus_dir:
             docs=load_folder(Path(cfg.corpus_dir),domain)
         else:
@@ -86,6 +117,11 @@ class LensRAGPipeline:
             telemetry={"mode":"sampled" if not estimate.get("exact") else "all records","scopes":len(scopes)}
             if plan.mode=="generated":                               # Mode C on top of the estimates
                 synthesis=self._synthesise(question,plan,records,{"estimate":estimate},[c.doc_id for _,c in sampled])
+        elif plan.qtype=="local" and self.reranker:
+            # Local path (Figure 1.1): hybrid search, cross-encoder rerank, then LLM filter + extract.
+            hits,telemetry=self._local_retrieve(question,plan,scopes)
+            rejected=[x for *_,payload in hits for x in (payload or {}).get("rejected",[])]
+            records,bad=validate_evidence_records(_unique_records(hits)); rejected.extend(bad)
         else:
             mapping=plan.operation=="map_reduce"
             hits,telemetry=coverage_retrieve(self.index,plan,scopes,  # step 5: loop until no new relevant evidence
@@ -105,6 +141,7 @@ class LensRAGPipeline:
             answer=self._generate_local(question,hits)
         else:
             answer=self._write(question,plan,mode,records,aggregate,estimate,synthesis,flags)
+        self._evidence_text=[c.enriched_text for c,*_ in hits]  # with the context header, for NLI
         verification=self._verify(question,plan,scopes,answer,records,flags,estimate,synthesis)   # step 8
         answer=self._finalize(question,answer,records,verification)            # step 9
         evidence_text=[c.text for c,*_ in hits]
@@ -115,6 +152,16 @@ class LensRAGPipeline:
                 "retrieved_chunks":[{"chunk_id":c.chunk_id,"doc_id":c.doc_id,"scope":lab,"score":sc} for c,sc,lab,_ in hits],
                 "evidence_records":records,"verification":verification,"rejected_evidence":rejected,
                 "adaptive_retrieval":telemetry,"latency_ms":round((time.perf_counter()-t0)*1000,2)}
+
+    def _local_retrieve(self, question, plan, scopes):
+        """Retrieve rerank_candidates per scope, keep the reranker's best page_size, then judge them."""
+        judge=self._llm_judge(question,extract=True); hits=[]
+        for sc in scopes:
+            cands=self.index.search(sc.query,self.config.rerank_candidates,where=scope_filter(plan,sc,self.domain))
+            top=self.reranker.rerank(question,cands,self.config.page_size)
+            hits+= [(c,s,sc.label,payload) for c,s,payload in judge(sc,top)]
+        return hits,{"reranker":self.reranker.model_name,"candidates":self.config.rerank_candidates,
+                     "kept":self.config.page_size,"scopes":len(scopes),"converged":True}
 
     # --- step 3: understand the question ------------------------------------------------
     def _plan(self, question):
@@ -139,6 +186,10 @@ class LensRAGPipeline:
             return {t:[by_name[t][n] for n in names if n in by_name.get(t,{})]
                     for t,names in raw.items() if t in by_name and isinstance(names,list)}
         named,excluded=pick("named"),pick("excluded")
+        if self.ner:  # Table 3.1: entity-list lookup + spaCy NER, LLM as fallback
+            for t,vals in self.ner.match(question,self.inventory,self.domain).items():
+                named.setdefault(t,[])
+                named[t]+=[v for v in vals if v not in named[t] and v not in excluded.get(t,[])]
         overrides={"qtype":out.get("qtype"),"direction":out.get("direction") if out.get("direction") in ("asc","desc") else None,
                    "k":out.get("k") if isinstance(out.get("k"),int) and out.get("k")>0 else None,
                    "threshold":out.get("threshold") if isinstance(out.get("threshold"),(int,float)) else None,
@@ -249,12 +300,16 @@ class LensRAGPipeline:
         kind=("category" if plan.operation in ("mode","frequency","map_reduce") and plan.qtype!="sentiment_shift"
               else "sentiment" if plan.qtype=="sentiment_shift" else "number" if plan.operation in ("mean","sum") else "flag")
         passes=1 if full and kind!="sentiment" else cfg.label_passes
+        if kind=="sentiment" and self.sentiment:
+            passes=1  # the classifier gives a probability per record: already a soft label
         labelled={}  # (scope, chunk_id) -> {"applies":[...], "values":[...], "span":str}
         for label,chunks in sample.items():
             for i in range(0,len(chunks),cfg.label_batch):
                 batch=chunks[i:i+cfg.label_batch]
                 for run in range(passes):
-                    for c,lab in zip(batch,self._label(question,kind,label,batch,run)):
+                    labels=(self._classify_sentiment(batch) if kind=="sentiment" and self.sentiment
+                            else self._label(question,kind,label,batch,run))
+                    for c,lab in zip(batch,labels):
                         slot=labelled.setdefault((label,c.chunk_id),{"chunk":c,"applies":[],"values":[],"span":""})
                         slot["applies"].append(lab.get("applies"))
                         slot["values"].append(lab.get("value"))
@@ -285,6 +340,14 @@ class LensRAGPipeline:
                                   f"stratified random sample, {passes} labelling passes, 95% intervals"})
         sampled=[(lab,c) for lab,chunks in sample.items() for c in chunks]
         return estimate,records,sampled
+
+    def _classify_sentiment(self, batch):
+        """Per-record P(negative) from the sentiment classifier (Table 3.1's RoBERTa option).
+
+        Scope filters already restrict the batch to the records the question is about.
+        """
+        probs=self.sentiment.negative_probs([c.text for c in batch])
+        return [{"applies":True,"value":round(p,4),"evidence_span":c.text[:120]} for c,p in zip(batch,probs)]
 
     def _label(self, question, kind, scope_label, batch, run):
         what={"flag":"value is true or false: whether the record meets the question's condition",
@@ -320,7 +383,9 @@ class LensRAGPipeline:
                     # Soft label: the share of passes that said the record meets the condition.
                     out.append(sum(_is_yes(v) for v in vals)/len(vals) if vals else None)
                 elif kind=="sentiment":
-                    out.append(sum(str(v).lower()=="negative" for v in vals)/len(vals) if vals else None)
+                    # LLM labels are words ("negative"); classifier labels are P(negative).
+                    out.append(sum(float(v) if isinstance(v,(int,float)) and not isinstance(v,bool)
+                                   else float(str(v).lower()=="negative") for v in vals)/len(vals) if vals else None)
             return out
         result={"groups":{}}
         for key,scopes_in in groups.items():
@@ -373,7 +438,11 @@ class LensRAGPipeline:
         coverage=completeness_report([{"entity":r.get("scope")} for r in records],expected)
         conflicts=find_conflicts(records) if plan.operation!="map_reduce" and not estimate else []
         judge=_role(self.llm,"verify").json("Check whether each answer claim is supported by supplied evidence spans and doc IDs. Return JSON {supported:boolean, unsupported_claims:[], notes:string}. Be conservative.",json.dumps({"question":q,"answer":answer,"records":records[:200]},default=str))
-        return {"coverage":coverage,"conflicts":conflicts,"version_resolution":flags,"claim_support":judge,
+        nli=None
+        if self.nli:  # Table 3.1: NLI model alongside the LLM judge
+            evidence=[r.get("evidence_span") for r in records if r.get("evidence_span")]+list(getattr(self,"_evidence_text",[]))
+            nli=self.nli.verify(answer,evidence)
+        return {"coverage":coverage,"conflicts":conflicts,"version_resolution":flags,"claim_support":judge,"nli":nli,
                 "uncertainty":uncertainty_report(estimate,synthesis)}
 
     def _number_check(self,q,answer,records,aggregate,estimate,synthesis,evidence_text,doc_ids):

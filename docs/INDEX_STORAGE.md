@@ -56,7 +56,7 @@ Otherwise the collection is dropped and rewritten.
    Each tier prints `index=built+stored` or `index=chroma`. `run_config.json` records the source and the load/build times under `index_stats`.
 3. Optional: use dense embeddings instead of TF-IDF as the second scorer fused with BM25:
    ```bash
-   python -m lensrag.cli run --tiers S M L --top-k 10 --output results_dense --semantic dense --rerank
+   python -m lensrag.cli run --tiers S M L --top-k 10 --output results --semantic dense --rerank
    ```
 4. Optional flags:
    - `--store DIR` chooses another store location;
