@@ -1,5 +1,23 @@
 from __future__ import annotations
-import json, os
+import json, os, threading
+
+
+_LOCK=threading.Lock()
+
+
+def _tls(client):
+    if "_tls" not in client.__dict__:
+        with _LOCK:
+            client.__dict__.setdefault("_tls",threading.local())
+    return client.__dict__["_tls"]
+
+
+def record_call(client, d):
+    """Add one call's usage to client.usage (thread-safe) and remember it as this thread's last call."""
+    with _LOCK:
+        for k,v in d.items():
+            client.usage[k]=client.usage.get(k,0)+v
+    _tls(client).last=d
 
 
 class LLMClient:
@@ -23,10 +41,13 @@ class LLMClient:
 
     def _track(self, r):
         u=getattr(r,"usage",None)
-        self.usage["calls"]+=1
-        if u is not None:
-            self.usage["prompt_tokens"]+=getattr(u,"prompt_tokens",0) or 0
-            self.usage["completion_tokens"]+=getattr(u,"completion_tokens",0) or 0
+        d={"calls":1,"prompt_tokens":getattr(u,"prompt_tokens",0) or 0 if u is not None else 0,
+           "completion_tokens":getattr(u,"completion_tokens",0) or 0 if u is not None else 0}
+        record_call(self,d)
+
+    def last_call_usage(self):
+        """This thread's last call's usage: exact when several threads share the client."""
+        return getattr(_tls(self),"last",None)
 
     def _create(self, **kw):
         """chat.completions.create with one retry when a local server aborts a repetition loop

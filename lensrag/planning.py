@@ -298,6 +298,9 @@ def parse_threshold(q: str):
         m = re.search(rf"\b(?:{words})\s+(?:the\s+)?(?:a\s+)?{_NUM}", ql)
         if m:
             return float(m.group(1)), comp
+    m = re.search(r"(?<![\d.])(\d+(?:\.\d+)?)\s*(?:times\b|×)", ql)   # 'life cover 4 times salary' = a stated value
+    if m:
+        return float(m.group(1)), "eq"
     return None, None
 
 

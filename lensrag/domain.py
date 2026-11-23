@@ -60,6 +60,7 @@ class Domain:
     item_nouns: list = dc_field(default_factory=list)    # other plurals questions select ("contracts")
     record_types: dict = dc_field(default_factory=dict)  # doc_type -> regex of words that ask for it
     type_hints: dict = dc_field(default_factory=dict)    # query type -> extra regexes
+    opinion_record_types: list = dc_field(default_factory=list)  # record logs whose free text states opinions: labelled once with a sentiment
     header: str = ""                                  # chunk header template
     source: str = ""
 

@@ -70,6 +70,11 @@ record_types:
   exit_interview_notes: '\bexit|rejoin|leavers?\b'
   survey_comments: '\bsurvey|\bpulse\b|\benps\b'
 
+# Record logs whose free text states an opinion (exit conversations, survey comments). Each of
+# their records is labelled once with a sentiment at index time (`lensrag.cli label-records`), which
+# then works as an ordinary record field ("share of negative exit conversations").
+opinion_record_types: [exit_interview_notes, survey_comments]
+
 # Extra domain phrasings for the keyword classifier (the full runtime asks an LLM first).
 type_hints:
   temporal: ['^\s*(list|which) .*circulars']

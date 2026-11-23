@@ -84,6 +84,10 @@ class _RoleView:
         return self.parent._call(self.role, "text", system, user, **kw)
 
 
+import threading
+_USAGE_LOCK = threading.Lock()
+
+
 class RoutedLLM:
     def __init__(self, provider, roles, factory, default_role="answer"):
         """factory(provider, model) -> client with json/text/usage/reset_usage."""
@@ -114,13 +118,17 @@ class RoutedLLM:
             out = getattr(c, kind)(system, user, **kw)
         except TypeError:
             out = getattr(c, kind)(system, user)
+        # A client that reports its own last call (per thread) is exact under concurrency;
+        # otherwise the difference of its running totals (exact when calls don't overlap).
+        last = c.last_call_usage() if hasattr(c, "last_call_usage") else None
         after = getattr(c, "usage", {}) or {}
-        role_u = self.usage["by_role"].setdefault(role, {"calls": 0, "prompt_tokens": 0, "completion_tokens": 0})
-        for k in ("prompt_tokens", "completion_tokens", "cache_read_tokens", "cache_write_tokens", "calls"):
-            d = (after.get(k, 0) or 0) - (before.get(k, 0) or 0)
-            self.usage[k] = self.usage.get(k, 0) + d
-            if k in role_u:
-                role_u[k] += d
+        with _USAGE_LOCK:
+            role_u = self.usage["by_role"].setdefault(role, {"calls": 0, "prompt_tokens": 0, "completion_tokens": 0})
+            for k in ("prompt_tokens", "completion_tokens", "cache_read_tokens", "cache_write_tokens", "calls"):
+                d = (last or {}).get(k, 0) if last is not None else (after.get(k, 0) or 0) - (before.get(k, 0) or 0)
+                self.usage[k] = self.usage.get(k, 0) + d
+                if k in role_u:
+                    role_u[k] += d
         return out
 
     def with_role(self, role):

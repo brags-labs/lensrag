@@ -181,6 +181,17 @@ class TypeSourceTests(unittest.TestCase):
         self.assertEqual(len(drop), 2)
         self.assertEqual(len(pipe._in_version(recs, NS(versions=["2.0", "3.0"]))[0]), 5)
 
+    def test_a_stated_multiple_is_an_equality_condition(self):
+        from lensrag.planning import parse_threshold
+        self.assertEqual(parse_threshold("In which countries is life cover 4 times annual base salary?"), (4.0, "eq"))
+        self.assertEqual(parse_threshold("How many times did it change?"), (None, None))
+
+    def test_yes_no_criteria_over_table_facts(self):
+        from lensrag.full.pipeline import LensRAGPipeline
+        P = LensRAGPipeline
+        self.assertTrue(P._YES.match("Yes, on site") and P._NO.match("No; childcare allowance available"))
+        self.assertFalse(P._YES.match("Not on site"))
+
     def test_explicit_direction_edge_cases(self):
         from lensrag.planning import explicit_direction as d
         self.assertEqual(d("Which three countries have the highest employer retirement contribution?"), "desc")

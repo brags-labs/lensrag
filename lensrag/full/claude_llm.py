@@ -58,16 +58,18 @@ class ClaudeClient:
                       "cache_write_tokens": 0, "calls": 0}
 
     def _track(self, r):
+        from .llm import record_call
         u = getattr(r, "usage", None)
-        self.usage["calls"] += 1
-        if u is None:
-            return
-        read = getattr(u, "cache_read_input_tokens", 0) or 0
-        write = getattr(u, "cache_creation_input_tokens", 0) or 0
-        self.usage["prompt_tokens"] += (getattr(u, "input_tokens", 0) or 0) + read + write
-        self.usage["completion_tokens"] += getattr(u, "output_tokens", 0) or 0
-        self.usage["cache_read_tokens"] += read
-        self.usage["cache_write_tokens"] += write
+        read = getattr(u, "cache_read_input_tokens", 0) or 0 if u is not None else 0
+        write = getattr(u, "cache_creation_input_tokens", 0) or 0 if u is not None else 0
+        record_call(self, {"calls": 1,
+                           "prompt_tokens": ((getattr(u, "input_tokens", 0) or 0) + read + write) if u is not None else 0,
+                           "completion_tokens": (getattr(u, "output_tokens", 0) or 0) if u is not None else 0,
+                           "cache_read_tokens": read, "cache_write_tokens": write})
+
+    def last_call_usage(self):
+        from .llm import _tls
+        return getattr(_tls(self), "last", None)
 
     def _create(self, system, user):
         kwargs = dict(

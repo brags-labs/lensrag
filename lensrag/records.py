@@ -60,6 +60,7 @@ class Record:
     doc_type: str
     chunk: object                      # the chunk it came from: carries country, period, status ...
     fields: dict = field(default_factory=dict)   # key -> raw string
+    text: str = ""                     # the record's block as written (for labelling its free text)
 
     def num(self, key):
         return parse_value(self.fields[key])[1] if key in self.fields else None
@@ -118,6 +119,7 @@ def records_of_chunk(chunk):
     for b in blocks:
         f = parse_block(b)
         if len([k for k in f if k != "id"]) >= 2:   # a record has an id and at least two fields
+            f["_text"] = "\n".join(x for x in b if x.strip()).strip()
             out.append(f)
     return out
 
@@ -133,7 +135,8 @@ def build_records(chunks, record_types):
             if key in seen:
                 continue
             seen.add(key)
-            out.append(Record(f["id"], c.doc_id, c.doc_type, c, {k: v for k, v in f.items() if k != "id"}))
+            out.append(Record(f["id"], c.doc_id, c.doc_type, c, {k: v for k, v in f.items() if k not in ("id", "_text")},
+                              f.get("_text", "")))
     return out
 
 

@@ -64,6 +64,8 @@ class PipelineConfig:
     template_answers: bool = False   # True: write computed answers in code (no write/finalize calls)
     llm_verify: bool = True          # False: NLI + number provenance only (no verify call)
     as_of_date: str | None = None    # ISO date for "in force now"; None = today
+    doc_catalogue: bool = True       # answer questions about which documents exist from index metadata
+    llm_workers: int = 1             # concurrent LLM calls per retrieval round (a local server needs as many parallel slots)
 
 
 DEFAULT_EMBEDDING_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
@@ -77,6 +79,9 @@ def fast_config(cfg):
     # Mode C: fewer repeated reduce runs.
     cfg.label_passes=1; cfg.sample_size=min(cfg.sample_size,60); cfg.label_batch=max(cfg.label_batch,20)
     cfg.max_exact_records=min(cfg.max_exact_records,60); cfg.reduce_runs=min(cfg.reduce_runs,2)
+    # Judge the scopes of a retrieval round together: Ollama with OLLAMA_NUM_PARALLEL=4 decodes four
+    # requests at about 2.5x the throughput of one (memory-bound decoding on Apple silicon).
+    cfg.llm_workers=int(os.getenv("LENSRAG_LLM_WORKERS") or max(cfg.llm_workers,4))
     return cfg
 
 
@@ -132,7 +137,9 @@ class LensRAGPipeline:
         if not isinstance(inventory,dict) or "entities" not in inventory:  # missing or an older format
             inventory=build_inventory(idx.chunks,load_domain(cfg.domain))
         llm=create_llm(cfg.llm_provider,cfg.llm_model,cfg.llm_stack) if use_llm else None
-        return cls(idx,inventory,llm,cfg)
+        pipe=cls(idx,inventory,llm,cfg)
+        pipe.index_dir=str(index_dir)
+        return pipe
 
     def ask(self, question: str):
         if not self.llm: raise RuntimeError("Query answering requires an LLM: set ANTHROPIC_API_KEY (Claude) or OPENAI_API_KEY and load with use_llm=True.")
@@ -142,6 +149,8 @@ class LensRAGPipeline:
         aggregate=None; flags=[]; estimate=None; synthesis=None; hits=[]; telemetry={}; rejected=[]
         fact_answer=self._fact_answer(question,plan,scopes) if self.config.fact_table else None
         field_answer=None if fact_answer else (self._field_estimate(question,plan,scopes) if plan.doc_types and self.config.record_fields else None)
+        if not (fact_answer or field_answer) and self.config.doc_catalogue:
+            fact_answer=self._catalogue_answer(question,plan)   # questions about which documents exist
         if fact_answer:
             # Reference facts stated in tables: read at load time, selected and computed in code.
             records,aggregate,flags,hits,telemetry=fact_answer
@@ -168,7 +177,8 @@ class LensRAGPipeline:
             mapping=plan.operation=="map_reduce"
             hits,telemetry=coverage_retrieve(self.index,plan,scopes,  # step 5: loop until no new relevant evidence
                                              judge=self._llm_judge(question,extract=not mapping),
-                                             page=self.config.page_size,max_rounds=self.config.adaptive_round_limit)
+                                             page=self.config.page_size,max_rounds=self.config.adaptive_round_limit,
+                                             workers=self.config.llm_workers)
             rejected=[x for *_,payload in hits for x in (payload or {}).get("rejected",[])]
             if mapping:                                              # Mode C: map, count in code, consistent reduce
                 records,aggregate=self._map(question,hits,plan)
@@ -196,7 +206,7 @@ class LensRAGPipeline:
         verification["number_provenance"]=self._number_check(question,answer,records,aggregate,estimate,synthesis,
                                                              evidence_text,[c.doc_id for c,*_ in hits])
         return {"query_type":plan.qtype,"type_source":self.config.type_source,"llm_qtype":getattr(self,"_llm_qtype",None),
-                "answer_source":"fact table" if fact_answer else None,"templated":bool(templated),
+                "answer_source":(telemetry.get("mode") if telemetry.get("mode") in ("fact table","document catalogue") else None),"templated":bool(templated),
                 "computation_mode":mode,"plan":plan.to_dict(),"answer":answer,
                 "deterministic_result":aggregate,"estimate":estimate,"insights":synthesis,
                 "retrieved_chunks":[{"chunk_id":c.chunk_id,"doc_id":c.doc_id,"scope":lab,"score":sc} for c,sc,lab,_ in hits],
@@ -205,11 +215,16 @@ class LensRAGPipeline:
 
     def _local_retrieve(self, question, plan, scopes):
         """Retrieve rerank_candidates per scope, keep the reranker's best page_size, then judge them."""
-        judge=self._llm_judge(question,extract=True); hits=[]
+        judge=self._llm_judge(question,extract=True); pages=[]
         for sc in scopes:
             cands=self.index.search(sc.query,self.config.rerank_candidates,where=scope_filter(plan,sc,self.domain))
-            top=self.reranker.rerank(question,cands,self.config.page_size)
-            hits+= [(c,s,sc.label,payload) for c,s,payload in judge(sc,top)]
+            pages.append((sc,self.reranker.rerank(question,cands,self.config.page_size)))
+        run=lambda x:[(c,s,x[0].label,payload) for c,s,payload in judge(*x)]
+        if self.config.llm_workers>1 and len(pages)>1:
+            from concurrent.futures import ThreadPoolExecutor
+            with ThreadPoolExecutor(max_workers=self.config.llm_workers) as pool: hits=[h for hs in pool.map(run,pages) for h in hs]
+        else:
+            hits=[h for x in pages for h in run(x)]
         return hits,{"reranker":self.reranker.model_name,"candidates":self.config.rerank_candidates,
                      "kept":self.config.page_size,"scopes":len(scopes),"converged":True}
 
@@ -356,8 +371,9 @@ class LensRAGPipeline:
         """Answer from table facts: pick the attribute the question asks about, collect its value
         per scope, compute in code. Returns (records, aggregate, flags, hits, telemetry) or None
         when the facts don't cover the question (the retrieval path then runs as before)."""
-        if plan.qtype not in self.FACT_TYPES or plan.doc_types or plan.operation in ("all_of","any_of","conflict"):
+        if plan.qtype not in self.FACT_TYPES or plan.doc_types or plan.operation=="conflict":
             return None
+        criteria=plan.operation in ("all_of","any_of")   # 'offices with both a gym and a crèche
         from ..facts import norm_attr
         facts=self._facts()
         entity_scopes=[sc for sc in scopes if sc.entity_value]
@@ -401,13 +417,18 @@ class LensRAGPipeline:
                 "entities":len({f["entity"] for f in by_attr[a]})} for i,(a,_) in enumerate(top)]
         try:
             pick=_role(self.llm,"extract").json(
-                "Pick the table attribute(s) that state the quantity the question asks about. Several ids may be "
-                "the same quantity worded differently in different documents; return all of those. Return JSON "
-                "{attribute_ids:[int], answerable:boolean}. answerable is false when none of them is the asked "
-                "quantity (a related but different quantity is not enough: annual leave days are not office days).",
+                ("The question lists several yes/no criteria. Pick the table attribute(s) that state each criterion; "
+                 "return JSON {criteria:[{criterion, attribute_ids:[int]}], answerable:boolean}. answerable is false when "
+                 "a criterion has no matching attribute." if criteria else
+                 "Pick the table attribute(s) that state the quantity the question asks about. Several ids may be "
+                 "the same quantity worded differently in different documents; return all of those. Return JSON "
+                 "{attribute_ids:[int], answerable:boolean}. answerable is false when none of them is the asked "
+                 "quantity (a related but different quantity is not enough: annual leave days are not office days)."),
                 json.dumps({"question":question,"candidates":cands},ensure_ascii=False))
         except Exception:
             return None
+        if criteria:
+            return self._fact_criteria(plan,pick,top,by_attr,cands,entity_scopes)
         ids=[i for i in (pick or {}).get("attribute_ids") or [] if isinstance(i,int) and 0<=i<len(top)]
         if not ids or pick.get("answerable") in (False,"false","no"): return None
         chosen=[f for i in ids for f in by_attr[top[i][0]]]
@@ -464,6 +485,114 @@ class LensRAGPipeline:
         return records,aggregate,flags,hits,{"mode":"fact table","attributes":[cands[i]["attribute"] for i in ids],
                                              "facts":len(records),"scopes":len(scopes)}
 
+    _YES=re.compile(r"^\s*(yes|y|true|available|provided|✓|✔)\b",re.I)
+    _NO=re.compile(r"^\s*(no|n|false|none|not available|not provided|✗|✘)\b",re.I)
+
+    def _fact_criteria(self, plan, pick, top, by_attr, cands, entity_scopes):
+        """all_of / any_of over yes/no table facts: the entities whose value for every (any) criterion
+        reads as yes. An entity with a criterion unstated is left out; too few covered -> None."""
+        crit=[[i for i in (c.get("attribute_ids") or []) if isinstance(i,int) and 0<=i<len(top)]
+              for c in (pick or {}).get("criteria") or [] if isinstance(c,dict)]
+        crit=[c for c in crit if c]
+        if len(crit)<2 or (pick or {}).get("answerable") in (False,"false","no"): return None
+        per={}   # entity -> [bool per criterion]
+        chosen=[]
+        for k,ids in enumerate(crit):
+            fs=[f for i in ids for f in by_attr[top[i][0]]]
+            specific={f["entity"] for f in fs if f["specific"]}
+            for f in fs:
+                if not f["specific"] and f["entity"] in specific: continue
+                yes=bool(self._YES.match(str(f["value"]))); no=bool(self._NO.match(str(f["value"])))
+                if not (yes or no): continue
+                per.setdefault(f["entity"],[None]*len(crit))[k]=yes
+                chosen.append(f)
+        n_ent=len({sc.entity_value for sc in entity_scopes})
+        full={e:v for e,v in per.items() if None not in v}
+        if not full or len(full)<0.7*n_ent: return None
+        test=all if plan.operation=="all_of" else any
+        keep=sorted(e for e,v in full.items() if test(v))
+        records=[{"entity":f["entity"],"attribute":f["attribute"],"value":f["value"],"value_as_written":f["value"],
+                  "evidence_span":f["evidence_span"],"doc_id":f["doc_id"],"version":f["version"],"status":f["status"],
+                  "effective_date":f["effective_date"],"period":f["period"],"scope":f["scope"]} for f in chosen if f["entity"] in keep]
+        aggregate=[{"entity":e,"value":True,"value_as_written":"meets every criterion" if plan.operation=="all_of" else "meets a criterion",
+                    "doc_id":next((r["doc_id"] for r in records if r["entity"]==e),None)} for e in keep]
+        hits=[(f["chunk"],0.0,f["scope"],None) for f in {id(f["chunk"]):f for f in chosen}.values()][:20]
+        return records,aggregate or None,[],hits,{"mode":"fact table","attributes":[cands[i]["attribute"] for c in crit for i in c],
+                                                   "facts":len(chosen),"scopes":len(entity_scopes)}
+
+    CATALOGUE_TYPES=("count","version_diff","temporal","filter","local")
+
+    def _catalogue_answer(self, question, plan):
+        """Questions about which documents exist (how many addenda in v3.0, circulars issued in
+        2025, countries covered by v1.0 or added in v3.0), answered from one metadata row per
+        document. Returns the fact-answer tuple, or None when the question is about content."""
+        if plan.qtype not in self.CATALOGUE_TYPES or plan.doc_types or plan.operation in ("conflict",):
+            return None
+        from ..doc_catalogue import build_catalogue, describe, run, DATE
+        if getattr(self,"_doc_rows",None) is None:
+            names={t:{e["value"]:e["name"] for e in items} for t,items in self.inventory.get("entities",{}).items()}
+            self._doc_rows=build_catalogue(self.index.chunks,lambda t,v:names.get(t,{}).get(v,v),self.domain.global_values)
+            self._doc_fields=describe(self._doc_rows)
+        rows,fields=self._doc_rows,self._doc_fields
+        starts={v:w[0] for v,w in self._version_windows().items()}
+        system=("Decide whether the question is about which documents exist in a corpus, using only each document's "
+                "metadata (type, title, version, country, office, dates, status), and if so map it to a query. Questions about "
+                "values or rules stated INSIDE documents (allowances, leave days, office days, benefits, whether something is "
+                "permitted, conflicts between documents) are NOT answerable here. Return JSON {answerable, operation, filters, "
+                "target, minus_filters}. operation: count (documents matching filters) | count_distinct (distinct target values) "
+                "| list (distinct target values). filters / minus_filters: [{field, op, value}], op eq | ne | in | contains | gte "
+                "| gt | lte | lt; dates are ISO strings. minus_filters: documents whose target values are removed from the list "
+                "('countries in version 3.0 but not in version 2.0'). target: the field to list or count distinct values of, "
+                "or 'document' to list documents. Use field values exactly as listed. Version start dates are given for "
+                "questions like 'after version 3.0 came into force'.")
+        try:
+            q=_role(self.llm,"extract").json(system,json.dumps({"question":question,"fields":fields,
+                                                                 "version_start_dates":starts},ensure_ascii=False))
+        except Exception:
+            return None
+        if not isinstance(q,dict) or q.get("answerable") in (False,"false","no",None) or \
+                q.get("operation") not in ("count","count_distinct","list"):
+            return None
+        ql=question.lower(); named_starts={starts[v] for v in plan.versions if v in starts}
+        def grounded(f,minus=False):
+            """Every filter value comes from the question: its words, a number or year it states, or
+            the start date of a version it names. 'exists' needs the question to name the field
+            ('which countries'); a minus filter may use any listed value ('added in 3.0' implies
+            the version before it)."""
+            if not isinstance(f,dict) or f.get("field") not in fields or "value" not in f: return False
+            if f.get("op")=="exists":
+                return any(w[:5] in ql for w in re.findall(r"[a-z]{4,}",f["field"].replace("_"," ")))
+            listed={str(x).lower() for x in fields[f["field"]].get("values",[])}
+            for v in (f["value"] if isinstance(f["value"],list) else [f["value"]]):
+                if minus and str(v).strip().lower() in listed: continue
+                sv=str(v).strip().lower()
+                if DATE.match(sv):
+                    if sv not in named_starts and sv[:4] not in ql: return False
+                elif re.fullmatch(r"\d+(\.\d+)?",sv):
+                    if not re.search(rf"(?<![\d.]){re.escape(sv)}(?![\d])",ql): return False
+                else:
+                    words=re.findall(r"[a-z]{4,}",sv)
+                    if not words or sum(w[:5] in ql for w in words)<max(1,(len(words)+1)//2): return False
+            return True
+        filters=q.get("filters") or []; minus=q.get("minus_filters") or []
+        for f in filters:   # 'after <date>' is strictly after; 'before <date>' strictly before
+            if isinstance(f,dict) and DATE.match(str(f.get("value",""))):
+                if f.get("op")=="gte" and re.search(r"\bafter\b",ql) and not re.search(r"\bon or after\b",ql): f["op"]="gt"
+                if f.get("op")=="lte" and re.search(r"\bbefore\b",ql) and not re.search(r"\bon or before\b",ql): f["op"]="lt"
+        if not filters or not all(grounded(f) for f in filters) or not all(grounded(f,True) for f in minus): return None
+        if q.get("target") and q["target"] not in fields: return None
+        answer,hit=run(rows,{**q,"filters":filters,"minus_filters":minus})
+        if answer is None or answer==[] or (q["operation"]!="list" and not hit): return None
+        aggregate={"catalogue":answer,"operation":q["operation"],"target":q.get("target") or "document","query":q}
+        records=[{"entity":r.get("country") or r.get("office") or "all","attribute":"document","value":r["document"],
+                  "evidence_span":r.get("title") or r["document"],"doc_id":r["document"],"version":r.get("version",""),
+                  "status":r.get("status"),"effective_date":r.get("effective_date",""),"period":None,"scope":"catalogue"}
+                 for r in hit[:50]]
+        by_doc={c.doc_id:c for c in self.index.chunks}
+        hits=[(by_doc[r["document"]],0.0,"catalogue",None) for r in hit[:20] if r["document"] in by_doc]
+        plan.mode="exact"
+        return records,aggregate,[],hits,{"mode":"document catalogue","query":q,"documents":len(hit)}
+
     @staticmethod
     def _asked_year(question, records):
         """The year a count question conditions on, when the attribute's values are years or dates."""
@@ -491,6 +620,10 @@ class LensRAGPipeline:
         def cite(rs): return " ".join(f"[{d}]" for d in dict.fromkeys(r.get("doc_id") for r in rs if r.get("doc_id")))
         def show(r): return f"{r['entity']}: {r.get('value_as_written', r['value'])}"
         a=aggregate
+        if isinstance(a,dict) and "catalogue" in a:
+            v=a["catalogue"]; what=a["target"].replace("_"," ")
+            body=f"{v} ({'documents' if a['operation']=='count' else 'distinct '+what+'s'})" if not isinstance(v,list) else "; ".join(map(str,v))
+            return f"[exact] From the document catalogue (index metadata): {body} " + cite(records[:20])
         if isinstance(estimate,dict) and estimate.get("kind")=="fields" and estimate.get("groups"):
             # every record in scope was read from its fields: the figures are exact
             lines=[]
@@ -586,11 +719,19 @@ class LensRAGPipeline:
         by_scope=defaultdict(list)
         for c,_,label,_ in hits: by_scope[label].append(c)
         mapped=[]
-        for label,chunks in by_scope.items():
-            out=_role(self.llm,"map").json("For each passage, list the query-relevant themes or categories as short labels, its sentiment "
+        def map_scope(item):
+            label,chunks=item
+            return _role(self.llm,"map").json("For each passage, list the query-relevant themes or categories as short labels, its sentiment "
                               "(positive|negative|neutral|mixed|null) and a verbatim evidence_span. Return JSON {items:[{index, labels:[], "
                               "sentiment, evidence_span}]}. Do not invent.",
                               json.dumps({"question":question,"scope":label,"passages":[{"index":i,"period":c.period,"passage":c.text} for i,c in enumerate(chunks)]}))
+        scopes=list(by_scope.items())
+        if self.config.llm_workers>1 and len(scopes)>1:
+            from concurrent.futures import ThreadPoolExecutor
+            with ThreadPoolExecutor(max_workers=self.config.llm_workers) as pool: outs=list(pool.map(map_scope,scopes))
+        else:
+            outs=[map_scope(x) for x in scopes]
+        for (label,chunks),out in zip(scopes,outs):
             for item in out.get("items",[]):
                 if not isinstance(item,dict) or not isinstance(item.get("index"),int) or not 0<=item["index"]<len(chunks): continue
                 c=chunks[item["index"]]; span=item.get("evidence_span") or ""
@@ -676,10 +817,26 @@ class LensRAGPipeline:
         if getattr(self,"_record_index",None) is None:
             from ..records import build_records
             recs=build_records(self.index.chunks,set(self.domain.record_types))
+            # sentiment labelled once at index time (label_records), read as an ordinary field
+            from ..record_labels import load_labels, apply_labels
+            path=Path(getattr(self,"index_dir",None) or self.config.index_dir)/"record_labels.json"
+            self._labelled=apply_labels(recs,load_labels(path)) if path.exists() else 0
             by_chunk=defaultdict(list)
             for r in recs: by_chunk[r.chunk.chunk_id].append(r)
             self._record_index=(recs,by_chunk)
         return self._record_index
+
+    def label_records(self, workers=2, progress=print):
+        """Label the sentiment of every record in the domain's opinion record types, once, with the
+        extract model; cached as record_labels.json in the index directory. Returns {key: label}."""
+        from ..record_labels import label_records
+        recs,_=self._records()
+        todo=[r for r in recs if r.doc_type in set(self.domain.opinion_record_types)]
+        view=_role(self.llm,"extract")
+        path=Path(getattr(self,"index_dir",None) or self.config.index_dir)/"record_labels.json"
+        labels=label_records(todo,view.json,getattr(view,"model",None) or str(self.llm.model),path,workers,progress)
+        self._record_index=None; self._full_catalogue=None   # reload with the labels applied
+        return labels
 
     def _field_estimate(self, question, plan, scopes):
         """Answer a record-log question from parsed record fields, exactly. Returns
@@ -754,6 +911,11 @@ class LensRAGPipeline:
             for v in vals:
                 if any(re.search(rf"\b{re.escape(n)}\b",str(v).lower()) for n in entity_names if len(n)>=4):
                     return False   # the value names an entity: the scopes already apply it
+                opt=next((o for o in options if o.lower()==str(v).strip().lower()),None)
+                field_words=[w for w in re.findall(r"[a-z]{4,}",f["field"].replace("_"," ")) if w not in ("field","value")]
+                if opt and (re.search(rf"\b{re.escape(opt.lower())}\b",ql) or
+                            (len(opt)<=5 and any(w[:5] in ql for w in field_words))):
+                    snapped.append(opt); continue   # a listed value the question states ('upheld'), or a yes/no on a field it names ('rejoin')
                 words=[w for w in re.findall(r"[a-z]{4,}",str(v).lower()) if w not in entity_words and w not in common]
                 # most of the value's words must be in the question (one shared word such as 'helpdesk' is not enough)
                 if not words or sum(w[:5] in ql for w in words)<max(1,(len(words)+1)//2): return False
@@ -766,13 +928,33 @@ class LensRAGPipeline:
             f["value"]=snapped if isinstance(f["value"],list) else snapped[0]
             if f.get("op")=="contains" and f["value"] in (values_of.get(f["field"]) or []): f["op"]="eq"
             return True
-        clean=lambda fl:[f for f in (fl or []) if grounded(f)]
+        numeric={k for v in cat.values() for k,i in v["fields"].items() if i["type"]=="number"}
+        def as_ranges(fl):
+            """'likelihood in 9,10' on a numeric field: the range gte 9, lte 10 (a run of whole numbers)."""
+            out=[]
+            for f in fl or []:
+                if isinstance(f,dict) and f.get("field") in numeric and f.get("op") in ("in","eq"):
+                    raw=f.get("value"); raw=raw if isinstance(raw,list) else re.split(r"[,\s]+",str(raw))
+                    try: nums=sorted({float(x) for x in raw if str(x).strip()!=""})
+                    except ValueError: nums=[]
+                    if len(nums)>1 and all(b-a==1 for a,b in zip(nums,nums[1:])):
+                        lo,hi=(int(x) if x.is_integer() else x for x in (nums[0],nums[-1]))
+                        out+=[{"field":f["field"],"op":"gte","value":lo},{"field":f["field"],"op":"lte","value":hi}]
+                        continue
+                out.append(f)
+            return out
+        clean=lambda fl:[f for f in as_ranges(fl) if grounded(f)]
         q["filters"]=clean(q.get("filters")); q["condition"]=clean(q.get("condition")); q["minus_condition"]=clean(q.get("minus_condition"))
+        cond_keys={json.dumps(f,sort_keys=True,default=str) for f in q["condition"]+q["minus_condition"]}
+        q["filters"]=[f for f in q["filters"] if json.dumps(f,sort_keys=True,default=str) not in cond_keys]   # a condition repeated as a filter
         if q["minus_condition"] and not q["condition"]:
             # 'promoters minus detractors' with the promoter range put in filters: those filters are the condition
             minus_fields={f["field"] for f in q["minus_condition"]}
             q["condition"]=[f for f in q["filters"] if f["field"] in minus_fields]
             q["filters"]=[f for f in q["filters"] if f["field"] not in minus_fields]
+        if q.get("operation")=="share" and not q["condition"] and q["filters"]:
+            # 'what share of grievances were upheld' with the condition put in filters: the filters are the condition
+            q["condition"],q["filters"]=q["filters"],[]
         if q.get("operation") in ("share","net_share") and not q["condition"]: return None
         if q.get("target") and q["target"] not in allowed: q["target"]=None
         if q.get("operation")=="sum" and not q.get("target"): q["operation"]="count"   # 'the number of grievances
@@ -800,6 +982,9 @@ class LensRAGPipeline:
                 (re.search(r"\b(combined|in total|altogether|overall)\b",ql) or not
                  re.search(r"\b(each|per|compare|compared|change|changed|vs|versus|differ|from .+ to)\b",ql)):
             group_by="none"   # one figure over the whole span ('between Q4 2024 and Q3 2026', 'Q4 and Q1 combined')
+        if group_by in ("none","") and len(plan.periods)>1 and \
+                re.search(r"\b(change|changed|before|after|compare|compared|vs|versus|from .+ to)\b",ql):
+            group_by="period"   # 'how did the share change after 1 April': one figure per period
         groups=defaultdict(list); order=[]
         def add(key,r):
             if key not in groups: order.append(key)

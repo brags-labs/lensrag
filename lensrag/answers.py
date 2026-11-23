@@ -286,6 +286,13 @@ def answer_from_aggregate(result, fmt):
             vals = next(iter(a["by_version"].values()))
             return [int(x) if isinstance(x, float) and x.is_integer() else x for x in (vals.get(v) for v in a["versions"])]
         return None
+    if isinstance(a, dict) and "catalogue" in a:
+        v = a["catalogue"]
+        if fmt == "value" and not isinstance(v, list):
+            return v
+        if fmt in ("set", "list") and isinstance(v, list):
+            return v
+        return None
     if isinstance(a, dict) and "count" in a:
         return a["count"] if fmt == "value" else None
     rows = [a] if isinstance(a, dict) and "entity" in a else a if isinstance(a, list) else None
@@ -308,7 +315,7 @@ def answer_from_aggregate(result, fmt):
 
 
 def _to_format(llm, question, fmt, result):
-    if result.get("answer_source") == "fact table":
+    if result.get("answer_source") in ("fact table", "document catalogue"):
         pred = answer_from_aggregate(result, fmt)
         if pred is not None:
             return pred

@@ -56,6 +56,9 @@ def main():
     ent.add_argument("--tier",default="L",choices=["S","M","L"],help="BragsLabs corpus size tier")
     ent.add_argument("--index-dir",help="Read the inventory saved by build-index instead of scanning documents")
     ent.add_argument("--json",action="store_true",help="Print the full inventory as JSON")
+    lab=sub.add_parser("label-records",help="Label the sentiment of every opinion record (exit notes, survey comments) once, at index time")
+    lab.add_argument("--index-dir",default="artifacts/index_L"); lab.add_argument("--llm-stack",default=None)
+    lab.add_argument("--domain",default="hr"); lab.add_argument("--workers",type=int,default=2); lab.add_argument("--limit",type=int,default=None)
     ask=sub.add_parser("ask",help="Ask a question using a persisted LensRAG index and configured LLM")
     ask.add_argument("question"); ask.add_argument("--index-dir",default="artifacts/index_L"); ask.add_argument("--llm-model",default=None,help="Model id; default claude-opus-5-5 (Claude) or gpt-4o-mini (OpenAI)");
     ask.add_argument("--llm-provider",default=None,choices=["auto","anthropic","openai","ollama"]);
@@ -117,6 +120,16 @@ def main():
         raise SystemExit(0 if ok else 1)
     elif args.cmd=="entities":
         print_entities(args,zip_path,extracted)
+    elif args.cmd=="label-records":
+        from .full.pipeline import LensRAGPipeline,PipelineConfig
+        cfg=PipelineConfig(index_dir=args.index_dir,domain=args.domain,llm_stack=args.llm_stack)
+        pipe=LensRAGPipeline.load(args.index_dir,cfg,use_llm=True)
+        if args.limit:   # a trial run on the first N opinion records
+            recs,_=pipe._records(); keep={id(r) for r in [r for r in recs if r.doc_type in pipe.domain.opinion_record_types][:args.limit]}
+            pipe._record_index=([r for r in recs if id(r) in keep],None)
+        labels=pipe.label_records(workers=args.workers)
+        from collections import Counter
+        print(json.dumps({"labelled":len(labels),"labels":Counter(labels.values())},indent=2))
     elif args.cmd=="ask":
         from .full.pipeline import LensRAGPipeline,PipelineConfig
         cfg=PipelineConfig(index_dir=args.index_dir,llm_model=args.llm_model,llm_provider=args.llm_provider,llm_stack=args.llm_stack,page_size=args.page_size)
