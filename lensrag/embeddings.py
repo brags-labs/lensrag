@@ -1,4 +1,5 @@
 from __future__ import annotations
+import os
 import numpy as np
 
 DEFAULT_EMBEDDING_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
@@ -13,7 +14,8 @@ class DenseEncoder:
         except ImportError as e:
             raise RuntimeError("Dense embeddings require: pip install sentence-transformers") from e
         self.model_name = model_name
-        self.model = SentenceTransformer(model_name)
+        # LENSRAG_TORCH_DEVICE=cpu keeps the embedder off a GPU that a large local LLM already fills.
+        self.model = SentenceTransformer(model_name, device=os.getenv("LENSRAG_TORCH_DEVICE") or None)
         # LensRAG chunks are a few hundred tokens; long-context embedders (BGE-M3 accepts 8,192) would
         # otherwise size every batch for their maximum and can exhaust GPU memory shared with local LLMs.
         if getattr(self.model, "max_seq_length", 0) and self.model.max_seq_length > MAX_SEQ_LENGTH:

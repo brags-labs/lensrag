@@ -145,6 +145,9 @@ def score_answer(pred, gold, fmt):
 # --- interval coverage (Mode B estimates) -------------------------------------------------
 def _groups_in_order(estimate):
     groups = (estimate or {}).get("groups") or {}
+    order = (estimate or {}).get("order")
+    if order and set(groups) <= set(order):  # field queries keep the question's own order
+        return [groups[k] for k in order if k in groups]
     def key(k):
         try:
             return tuple(ast.literal_eval(k))
@@ -241,7 +244,10 @@ def answer_from_estimate(estimate, question, fmt):
         g = groups[0]
         cats = sorted(g["categories"], key=lambda c: -c["estimate"])
         pop = g.get("population") or g.get("n") or 0
+        values = g.get("values_are") not in (None, "counts")   # means or shares: the value itself
         def item(c):
+            if values:
+                return [c["category"], round(c["count"], 3)]
             return [c["category"], round(c["estimate"], 3) if _ASKS_SHARE.search(question) else round(c["estimate"] * pop)]
         if fmt == "tuple" and cats:
             return item(cats[0])
@@ -258,8 +264,56 @@ def answer_from_estimate(estimate, question, fmt):
     return None
 
 
+def answer_from_aggregate(result, fmt):
+    """The requested format, in code, from a computed fact-table result; None if it doesn't fit."""
+    a = result.get("deterministic_result")
+    if a is None:
+        return None
+    def val(r):
+        v = r.get("value")
+        return int(v) if isinstance(v, float) and v.is_integer() else v
+    if isinstance(a, dict) and "changed" in a:
+        if fmt in ("set", "list") and len(a["versions"]) == 2:
+            return a["changed"]
+        if fmt == "value" and len(a["by_version"]) == 1 and len(a["versions"]) == 2:
+            vals = next(iter(a["by_version"].values()))
+            x, y = (vals.get(v) for v in a["versions"])
+            if isinstance(x, (int, float)) and isinstance(y, (int, float)):
+                d = y - x
+                return int(d) if float(d).is_integer() else round(d, 3)
+            return None
+        if fmt == "list" and len(a["by_version"]) == 1:
+            vals = next(iter(a["by_version"].values()))
+            return [int(x) if isinstance(x, float) and x.is_integer() else x for x in (vals.get(v) for v in a["versions"])]
+        return None
+    if isinstance(a, dict) and "count" in a:
+        return a["count"] if fmt == "value" else None
+    rows = [a] if isinstance(a, dict) and "entity" in a else a if isinstance(a, list) else None
+    if isinstance(a, (int, float)) and not isinstance(a, bool):
+        return a if fmt == "value" else None
+    if not rows or not all(isinstance(r, dict) and "entity" in r for r in rows):
+        return None
+    if fmt == "value":
+        if len(rows) != 1:
+            return None
+        v = val(rows[0])
+        return v if isinstance(v, (int, float)) else rows[0].get("value_as_written", v)
+    if fmt == "set":
+        return list(dict.fromkeys(r["entity"] for r in rows))
+    if fmt == "tuple":
+        return [rows[0]["entity"], val(rows[0])] if len(rows) == 1 else None
+    if fmt == "ranked_list":
+        return [[r["entity"], val(r)] for r in rows]
+    return None
+
+
 def _to_format(llm, question, fmt, result):
-    if result.get("computation_mode") == "estimated":
+    if result.get("answer_source") == "fact table":
+        pred = answer_from_aggregate(result, fmt)
+        if pred is not None:
+            return pred
+    est = result.get("estimate") or {}
+    if result.get("computation_mode") == "estimated" or est.get("field_query"):
         pred = answer_from_estimate(result.get("estimate"), question, fmt)
         if pred is not None:
             return pred
@@ -321,6 +375,9 @@ def run_answers(zip_path, extract_dir, output, tier="L", methods=("rag_topk", "l
     from .full.pipeline import LensRAGPipeline, PipelineConfig, apply_stack_components
     llm_stack = llm_stack or os.getenv("LENSRAG_LLM_STACK") or None  # same source as create_llm
     cfg = apply_stack_components(PipelineConfig(tier=tier, domain=dom.source, llm_stack=llm_stack))
+    if os.getenv("LENSRAG_FAST", "").lower() in ("1", "true", "yes"):  # low-latency profile
+        from .full.pipeline import fast_config
+        cfg = fast_config(cfg)
     stack_embedding = cfg.embedding_model if llm_stack and not lexical_fallback else None
     if "rag_topk" in methods:
         if stack_embedding:  # same dense model as LensRAG, for a like-for-like baseline
@@ -392,6 +449,9 @@ def run_answers(zip_path, extract_dir, output, tier="L", methods=("rag_topk", "l
             rows.append({"tier": tier, "qid": q["qid"], "method": method, "query_type": q["type"], "scope": scope,
                          "answer_format": fmt, "prediction": json.dumps(pred, ensure_ascii=False, default=str),
                          "computation_mode": result.get("computation_mode", "") if result else "",
+                         "planned_type": result.get("query_type", "") if result else "",
+                         "answer_source": (result.get("answer_source") or "record fields" if (result.get("estimate") or {}).get("field_query") or result.get("answer_source") else
+                                           "estimate" if result.get("estimate") else "llm") if result else "",
                          "interval_covered": cov["covered"], "interval_targets": cov["targets"],
                          "estimate": json.dumps(result.get("estimate"), default=str) if result and result.get("estimate") else "",
                          "gold": json.dumps(q["answer"], ensure_ascii=False), "exact_match": em, "set_f1": f1,

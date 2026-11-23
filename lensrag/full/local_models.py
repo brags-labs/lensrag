@@ -17,12 +17,18 @@ so tests can use stand-ins. Model names are recorded on each instance for the re
 """
 from __future__ import annotations
 import difflib
+import os
 import re
 
 DEFAULT_RERANKER = "BAAI/bge-reranker-v2-m3"
 DEFAULT_SPACY = "en_core_web_sm"
 DEFAULT_NLI = "cross-encoder/nli-deberta-v3-large"
 DEFAULT_SENTIMENT = "cardiffnlp/twitter-roberta-base-sentiment-latest"
+
+
+def _device():
+    """LENSRAG_TORCH_DEVICE=cpu keeps these models off a GPU that a large local LLM already fills."""
+    return os.getenv("LENSRAG_TORCH_DEVICE") or None
 
 
 # --- Search + rerank -------------------------------------------------------------------------
@@ -34,7 +40,7 @@ class Reranker:
     def model(self):
         if self._model is None:
             from sentence_transformers import CrossEncoder
-            self._model = CrossEncoder(self.model_name, max_length=512)
+            self._model = CrossEncoder(self.model_name, max_length=512, device=_device())
         return self._model
 
     def rerank(self, question, items, top):
@@ -158,7 +164,7 @@ class NLIVerifier:
     def model(self):
         if self._model is None:
             from sentence_transformers import CrossEncoder
-            self._model = CrossEncoder(self.model_name, max_length=512)
+            self._model = CrossEncoder(self.model_name, max_length=512, device=_device())
         return self._model
 
     def _labels(self):
@@ -209,7 +215,7 @@ class SentimentClassifier:
         if self._model is None:
             from transformers import pipeline
             self._model = pipeline("text-classification", model=self.model_name, top_k=None,
-                                   truncation=True, max_length=512)
+                                   truncation=True, max_length=512, device=_device() or -1)
         return self._model
 
     def negative_probs(self, texts):

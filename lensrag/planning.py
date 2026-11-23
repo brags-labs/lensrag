@@ -266,6 +266,29 @@ def parse_direction(q: str):
     return "asc" if asc and not re.search(r"\b(highest|most|longest|largest|greatest|maximum)\b", ql) else "desc"
 
 
+def explicit_direction(q: str):
+    """The direction the question states in words, or None when it states none (the LLM decides).
+
+    'at least' / 'at most' are thresholds, not directions. 'oldest' / 'newest' name a direction
+    only for dates and years (oldest office = earliest opening year = ascending); for an age or a
+    duration 'oldest' is the largest value, so without a date word they are left to the LLM.
+    """
+    ql = re.sub(r"\bat (least|most)\b|\bno (less|more|fewer) than\b", " ", q.lower())
+    if re.search(r"from\s+(shortest|lowest|smallest|least|fewest|oldest|earliest)\s+to", ql):
+        return "asc"
+    if re.search(r"from\s+(longest|highest|largest|most|newest|latest)\s+to", ql):
+        return "desc"
+    dated = re.search(r"\b(year|date|opened|opening|founded|established|launched|introduced|since)\b", ql)
+    up = r"highest|most|longest|largest|greatest|maximum|biggest" + ("|newest|latest|most recent" if dated else "")
+    down = r"lowest|least|shortest|fewest|smallest|minimum|earliest" + ("|oldest" if dated else "")
+    has_up, has_down = re.search(rf"\b({up})\b", ql), re.search(rf"\b({down})\b", ql)
+    if has_up and not has_down:
+        return "desc"
+    if has_down and not has_up:
+        return "asc"
+    return None
+
+
 def parse_threshold(q: str):
     ql = q.lower()
     pats = [("gte", r"at least|no fewer than|no less than|or more"), ("lte", r"at most|no more than"),
