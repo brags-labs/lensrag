@@ -169,14 +169,37 @@
 
 \chapter*{Abstract}
 \addcontentsline{toc}{chapter}{Abstract}
-Write 250--300 words. State the problem and why it matters to industry
-(cite the market driver), the gap in prior work, what you built or measured,
-the headline quantitative result (e.g., ``the gateway reduced tool-poisoning
-success from 61\% to 4\% at a 7\% task-completion cost''), and the released
-artifact (benchmark, dataset, reference architecture).
+Enterprises increasingly ask questions of whole document collections rather
+than of single passages: how many countries give more than twenty days of
+leave, which offices have both a gym and a crèche, how the share of exits
+citing office attendance changed after a policy took effect. Standard
+retrieval-augmented generation (RAG) passes a few top-ranked passages to a
+language model, which suits questions answered by one passage but not
+questions that need counting, ranking or comparing across hundreds of
+documents and thousands of records.
+
+This project builds a benchmark and a method for such corpus-level
+questions. The benchmark is a synthetic HR corpus of 2.6 million tokens in
+three sizes, with 89 questions whose answers are computed from a ledger. The
+method, LensRAG, retrieves per entity over context-enriched chunks, reads
+tables, record fields and document metadata once at index time, lets a
+language model choose what to compute, and computes and checks the answer in
+code. Everything runs on local open-weight models.
+
+On the largest corpus, standard RAG answers every single-passage question
+but only 24--28\% of corpus-level questions exactly. LensRAG's retrieval
+roughly doubles the evidence that reaches the model, at 0.3\% of
+long-context cost, but this alone did not improve answers. With the
+index-time structures, LensRAG answers 83--85\% of corpus-level questions
+exactly against 24\% for standard RAG with the same 14B model (43 wins, 1
+loss, $p<10^{-11}$), keeps all single-passage questions correct, and answers
+80 of 89 questions within 45 seconds at a median of 5 seconds and about the
+same token cost. These scores were measured on the questions the method was
+developed on; a held-out evaluation remains to be done. The corpus, gold
+answers and a tested implementation will be released with the paper.
 
 \vspace{1em}
-\noindent\textbf{Keywords:} agentic AI; Model Context Protocol; retrieval-augmented generation; evaluation; LLMOps.
+\noindent\textbf{Keywords:} retrieval-augmented generation; corpus-level question answering; aggregation; enterprise documents; evaluation; local LLMs.
 
 \chapter*{Declaration and AI-Use Disclosure}
 \addcontentsline{toc}{chapter}{Declaration and AI-Use Disclosure}
@@ -553,9 +576,12 @@ baselines, without reducing accuracy on local questions.
   answer accuracy, cost and latency, across three corpus sizes. On the
   largest corpus, LensRAG roughly doubles the evidence that reaches the
   generator (global recall 0.71 versus 0.36) at 0.3\% of the context of
-  full-corpus prompting. With local 3B--32B models this did not raise exact
-  match on global questions (0.28 for both), and it lowered local accuracy
-  (Chapter~\ref{ch:results}).
+  full-corpus prompting. Better retrieval alone did not raise exact match
+  (0.28 for both). Reading tables, record fields and document metadata once
+  at index time and computing answers in code raised global exact match to
+  0.83 against 0.24 for standard RAG with the same local 14B model, with a
+  median of 5 seconds per answer (Chapter~\ref{ch:results}). These are
+  development scores, measured on the questions the method was tuned on.
   \item \textbf{Practitioner guidance:} recommendations on when global
   questions need more than standard RAG, and which strategy suits which
   question type.
@@ -1200,6 +1226,68 @@ cheap, high-volume steps on small models, as Table~\ref{tab:models}
 proposes. Providers are interchangeable: the same code runs on Claude, on
 any OpenAI-compatible endpoint, or on local models served by Ollama.
 
+\paragraph{Structure built at index time.}
+The first runs showed that most of the answer time, and most of the errors,
+came from LLMs re-reading passages to recover facts that the corpus states in
+regular forms. Three structures are therefore built once, when the index is
+loaded, with no field list or schema configured:
+\begin{itemize}
+  \item \emph{Table-fact index.} Every Markdown table row becomes a fact
+  (attribute, value, number, unit) carrying its chunk's metadata: entity,
+  version, status, effective date. Two-column, before/after and matrix
+  tables are recognised. The tier-L corpus gives 5{,}690 facts from 524
+  chunks in about 0.01\,s.
+  \item \emph{Record fields.} Record logs (helpdesk tickets, grievances, exit
+  notes, survey comments) are parsed into records with labelled fields, for
+  example \texttt{CSAT: 3/5} or \texttt{Primary reason: \ldots}. A field
+  catalogue lists each record type's fields, with their values for
+  categorical fields and their range for numeric ones.
+  \item \emph{Record labels.} Records whose free text states an opinion (exit
+  conversations and survey comments, named in the domain configuration) are
+  labelled once with a sentiment by the 14B model, in batches. The labels
+  are cached next to the index together with the model and prompt that made
+  them, and become an ordinary field. Labelling the 4{,}810 records took 53
+  minutes, once.
+  \item \emph{Document catalogue.} One row per document with its type,
+  title, version, country, office and dates, for questions about which
+  documents exist.
+\end{itemize}
+
+\paragraph{Answer paths.}
+Each question is tried on these paths in order, and falls through to the
+next when a path cannot express it:
+\begin{enumerate}
+  \item \emph{Table facts.} One LLM call picks the attribute the question
+  asks about from candidates ranked by embedding similarity and by how many
+  of the scoped entities they cover. Code then keeps, per entity, the value
+  in force for the asked version and date, converts it to the asked unit,
+  and computes the count, extremum, ranking, filter or version difference.
+  Yes/no criteria (``offices with both a gym and a crèche'') are evaluated
+  per entity.
+  \item \emph{Record fields.} One LLM call maps the question to a small
+  query (filters, operation, target, grouping) over the field catalogue,
+  and code runs it over every record in scope. Operations are count, sum,
+  mean, share, net share (for example promoters minus detractors), most
+  common values and group rankings, with ties at the cut-off kept.
+  \item \emph{Document catalogue.} One LLM call maps the question to a
+  count, a list of distinct values, or a list minus another list
+  (``countries in version 3.0 but not in version 2.0'').
+  \item \emph{Passage retrieval.} The coverage-oriented retrieval and Modes
+  A--C described above.
+\end{enumerate}
+The LLM never computes a number on the first three paths; it only chooses
+what to compute. Its choices are checked in code before they run: every
+filter value must appear in the question or be a value listed for that
+field, a value that names an entity the scopes already apply is dropped,
+and a query that cannot be checked falls through to the next path.
+
+\paragraph{Fast profile.}
+A low-latency configuration uses one resident model (Qwen2.5-14B) for every
+role. It classifies questions by rules, takes stated parameters (direction,
+threshold, version, $k$) from the question text, writes answers from
+templates when a result is computed, skips the LLM verification judge, and
+sends up to four LLM calls in parallel within a retrieval round.
+
 \begin{table}[htbp]
 \centering\small
 \caption{Candidate models for each stage of the LensRAG query pipeline.
@@ -1351,7 +1439,12 @@ includes: 34 questions in S, 60 in M and 89 in L.
   calibrated relevance judge.
 \end{itemize}
 At the answer level, \texttt{rag\_topk} (hybrid top-10 chunks, then one LLM
-answer) is compared with the full LensRAG pipeline. The long-context answer
+answer) is compared with the full LensRAG pipeline in four configurations:
+the first run with the routed 3B/14B/32B stack, the same stack after the
+fixes of Section~\ref{sec:errors}, and two runs of the 14B fast profile.
+\texttt{rag\_topk} was run twice: with Qwen2.5-32B over BM25 + TF-IDF (the
+original run) and with Qwen2.5-14B over BM25 + BGE-M3, the same model and
+embeddings as the fast profile. The long-context answer
 baseline was not run with local models: their 32k-token context cannot hold
 even tier S. Long context is therefore evaluated at the retrieval level only.
 
@@ -1452,11 +1545,23 @@ next to the results in \path{run_config.json} and
 
 \paragraph{Internal validity.}
 \begin{itemize}
-  \item LLM outputs vary between runs. Answers were generated once, at low
-  temperature (0--0.1), so no variance across runs is reported.
-  \item Two answers were retried after a decoding failure.
+  \item \emph{Development on the test questions.} The fixes and the fast
+  profile were developed by tracing failures on the same 89 tier-L
+  questions that they are scored on. The rules in the code are generic (no
+  question, entity or document id appears in it), but some were added
+  because a particular question failed, and the domain configuration holds
+  a few classifier phrasings taken from test questions. The fast-profile scores are therefore
+  development scores, and are likely to overstate accuracy on new questions.
+  A held-out question set is needed to confirm them.
+  \item \emph{Variation between runs.} LLM outputs vary between runs. The
+  first answer runs were generated once, at low temperature (0--0.1). The
+  fast profile was run twice: the runs agree on 87 of 89 questions. Serving
+  four requests in parallel makes outputs non-deterministic even at
+  temperature 0, because requests are batched together.
+  \item Two answers in the first run were retried after a decoding failure.
   \item A configuration error disabled the non-LLM components during the
-  answer run (Section~\ref{sec:impl-env}).
+  first answer run and gave its baseline TF-IDF instead of BGE-M3
+  (Section~\ref{sec:impl-env}). The baseline was re-run with BGE-M3.
 \end{itemize}
 
 \paragraph{External validity.}
@@ -1491,7 +1596,7 @@ LensRAG is a Python 3.13 package with the following layout:
   \item \texttt{lensrag/full/}: the LLM pipeline, providers, model routing
   and the local components;
   \item \texttt{lensrag/domains/}: YAML domain configurations;
-  \item \texttt{tests/}: 108 unit tests;
+  \item \texttt{tests/}: 140 unit tests;
   \item \texttt{RUN\_EXPERIMENT.sh}: runs the whole experiment.
 \end{itemize}
 
@@ -1511,29 +1616,50 @@ folder:
 Answers are saved after each question, so an interrupted run resumes where it
 stopped. The seed is 42 throughout.
 
+The fast profile needs the record labels once, then runs the questions:
+\begin{lstlisting}[language=bash,caption={Fast profile.},label={lst:fast}]
+python -m lensrag.cli label-records --index-dir artifacts/index_L_bge-m3 \
+    --llm-stack local-qwen-14b
+LENSRAG_FAST=1 LENSRAG_TORCH_DEVICE=cpu python -m lensrag.cli answers \
+    --tier L --index-dir artifacts/index_L_bge-m3 --methods lensrag \
+    --llm-stack local-qwen-14b --output results/fast_run_v3
+\end{lstlisting}
+
 \paragraph{Hardware and serving.}
-The experiments ran on an Apple-silicon Mac with 36\,GB of unified memory, on
-21--22 November 2026. LLMs were served by Ollama with a 32k-token context.
-The other models ran in PyTorch through sentence-transformers, transformers
-and spaCy.
+The experiments ran on an Apple-silicon Mac (M4 Max) with 36\,GB of unified
+memory, on 21--23 November 2026. LLMs were served by Ollama with a
+32k-token context. The other models ran in PyTorch through
+sentence-transformers, transformers and spaCy.
+
+For the fast profile, only the 14B model is loaded, so no time is lost
+swapping models: the 32B and 14B models do not fit in memory together, and a
+quality-stack run spent about five seconds on each of 1{,}004 model swaps. Ollama was started with
+four parallel slots, flash attention and an 8-bit key--value cache
+(\texttt{OLLAMA\_NUM\_PARALLEL=4}, \texttt{OLLAMA\_FLASH\_ATTENTION=1},
+\texttt{OLLAMA\_KV\_CACHE\_TYPE=q8\_0}), which fits four 32k contexts beside
+the model in 22\,GB. Four parallel requests generate 89 tokens per second
+in total against 36 for one. The PyTorch models were kept on the CPU
+(\texttt{LENSRAG\_TORCH\_DEVICE=cpu}) to leave the GPU to the LLM.
 
 \begin{table}[htbp]
 \centering\small
-\caption{Models used in the experiments (\texttt{local-qwen} stack). All
-are open-weight and run locally.}
+\caption[Models used in the experiments]{Models used in the experiments: the routed \texttt{local-qwen}
+stack and the single-model \texttt{local-qwen-14b} stack of the fast
+profile. All are open-weight and run locally.}
 \label{tab:used-models}
 \begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{4.2cm} >{\raggedright\arraybackslash}X >{\raggedright\arraybackslash}p{3.6cm}@{}}
 \toprule
 Role & Model & Used in \\
 \midrule
-Classify & Qwen2.5-3B-Instruct & answer run \\
-Extract, map, verify & Qwen2.5-14B-Instruct & answer run \\
-Reduce, answer, baseline answers & Qwen2.5-32B-Instruct & answer run \\
-Dense embeddings & BAAI/bge-m3 & both runs \\
-Relevance judge / reranker & BAAI/bge-reranker-v2-m3 & retrieval run \\
-Entity NER & spaCy \texttt{en\_core\_web\_sm} 3.8 & implemented, not in answer run \\
-NLI verification & cross-encoder/nli-deberta-v3-large & implemented, not in answer run \\
-Sentiment soft labels & cardiffnlp/twitter-roberta-base-sentiment-latest & implemented, not in answer run \\
+Classify & Qwen2.5-3B-Instruct & quality-stack runs \\
+Extract, map, verify & Qwen2.5-14B-Instruct & quality-stack runs \\
+Reduce, answer, first baseline & Qwen2.5-32B-Instruct & quality-stack runs \\
+Every LLM role, record labels, second baseline & Qwen2.5-14B-Instruct & fast profile \\
+Dense embeddings & BAAI/bge-m3 & all runs \\
+Relevance judge / reranker & BAAI/bge-reranker-v2-m3 & retrieval run; local path of later answer runs \\
+Entity NER & spaCy \texttt{en\_core\_web\_sm} 3.8 & later answer runs \\
+NLI verification & cross-encoder/nli-deberta-v3-large & later answer runs (verification report only) \\
+Sentiment soft labels & cardiffnlp/twitter-roberta-base-sentiment-latest & implemented; not used by the fast profile \\
 \bottomrule
 \end{tabularx}
 \end{table}
@@ -1551,9 +1677,10 @@ Table~\ref{tab:used-models} differs from Table~\ref{tab:models} in two ways.
   rather than BGE-M3 for its dense half.
 \end{itemize}
 The retrieval benchmark passed its models explicitly and is unaffected. The
-fault has since been fixed and covered by a test. The four components are
-implemented and unit-tested, but their effect on answer accuracy is not
-measured in this report.
+fault has since been fixed and covered by a test. The later answer runs (the
+quality stack after fixes and the fast profile) load all four components,
+and the baseline was re-run with BGE-M3. The separate effect of each
+component on answer accuracy is not measured in this report.
 
 \section{Key Components}
 \label{sec:components}
@@ -1570,6 +1697,26 @@ the gold format. The 3B--32B models often replied ``unsupported'' even when
 an estimate existed. In one case the estimate (3.43) equalled the gold value.
 Mode B answers are now read directly from the estimate object, which returns
 a count or a share as the question asks.
+
+\paragraph{Checking the model's query before it runs.}
+On the record-field path the 14B model often wrote plausible but wrong
+queries: a filter on an assignee field whose only matching word was
+``helpdesk'', which every value contains; a promoter range written as a
+filter rather than as the share's condition; a grouping by ``month'' that
+is not a field. Each was handled by a generic check rather than a better
+prompt: filter values must match the question by their distinctive words or
+be a listed value; a numeric list of consecutive values becomes a range; a
+condition repeated as a filter is removed; grouping words map to the entity
+or period scopes. Together with answers written in code from the computed
+result, these checks raised global exact match from 0.52 to 0.73
+(Table~\ref{tab:steps}).
+
+\paragraph{Parallel calls and token accounting.}
+Within a retrieval round the scopes' pages are judged concurrently, as are
+the scopes of a Mode C map step. Token usage was first counted as the
+difference of a client's running totals before and after a call, which
+double-counts when calls overlap. Each client now records its own call's
+usage per thread.
 
 \paragraph{Repetition aborts.}
 Under greedy decoding, Qwen models occasionally fall into a repetition loop,
@@ -1596,9 +1743,11 @@ persisted ChromaDB index. Provider selection is by environment variable:
   \item any OpenAI-compatible endpoint;
   \item a local Ollama server.
 \end{itemize}
-A self-hosted deployment needs only a server with about 36\,GB of
-accelerator memory for the 32B model, or less with the single-model
-\texttt{local-qwen-14b} stack. The documents never leave the machine.
+A self-hosted deployment of the fast profile needs about 22\,GB of
+accelerator memory: the 14B model with four 32k-token parallel slots. The
+quality stack needs room for the 32B model as well. The documents never
+leave the machine. The record labels are built once per corpus and must be
+rebuilt when record logs change.
 Production concerns (autoscaling, monitoring, rollback) are out of scope
 (Section~\ref{sec:scope}).
 
@@ -1608,46 +1757,63 @@ Production concerns (autoscaling, monitoring, rollback) are out of scope
 \section{Main Findings}
 \label{sec:findings}
 
-Table~\ref{tab:main} summarises the headline results on tier L, the largest
-corpus, where the differences between methods are greatest.
+Table~\ref{tab:main} summarises the retrieval-level results on tier L, the
+largest corpus, where the differences between methods are greatest.
+Table~\ref{tab:answers} gives the answer-level results.
 
 \begin{table}[htbp]
 \centering\small
-\caption{Main results on tier L (89 questions: 17 local, 72 global). Retrieval
-columns: global questions. Answer columns: generator Qwen2.5-32B; LensRAG
-uses the routed \texttt{local-qwen} stack. At the answer level, standard RAG
-used BM25 + TF-IDF rather than BM25 + BGE-M3 (Section~\ref{sec:impl-env}).
-Best value per column in bold.}
+\caption{Retrieval-level results on tier L (global questions). Best value per
+column in bold.}
 \label{tab:main}
-\begin{tabular}{@{}lrrrrrr@{}}
+\begin{tabular}{@{}lrrr@{}}
 \toprule
-& \multicolumn{2}{c}{Retrieval (global)} & \multicolumn{3}{c}{Answer exact match / set F1} & \\
-\cmidrule(lr){2-3}\cmidrule(lr){4-6}
-Method & Recall & F1 & Global EM & Global F1 & Local EM & Tokens / q \\
+Method & Recall & F1 & Context tokens / q \\
 \midrule
-BM25 top-10 & 0.372 & 0.309 & -- & -- & -- & 2{,}507 \\
-Hybrid top-10 (standard RAG) & 0.357 & 0.330 & \textbf{0.282} & 0.351 & \textbf{1.000} & 2{,}676 \\
-Long context 128k & 0.116 & 0.036 & -- & -- & -- & 122{,}456 \\
-Long context 1M & 0.592 & 0.053 & -- & -- & -- & 994{,}634 \\
-LensRAG & 0.714 & 0.561 & \textbf{0.282} & \textbf{0.449} & 0.765 & 78{,}759 \\
-LensRAG + judge & \textbf{0.772} & \textbf{0.579} & -- & -- & -- & -- \\
+BM25 top-10 & 0.372 & 0.309 & 2{,}507 \\
+Hybrid top-10 (standard RAG) & 0.357 & 0.330 & 2{,}513 \\
+Long context 128k & 0.116 & 0.036 & 122{,}456 \\
+Long context 1M & 0.592 & 0.053 & 994{,}634 \\
+LensRAG & 0.714 & 0.561 & 8{,}129 \\
+LensRAG + judge & \textbf{0.772} & \textbf{0.579} & 21{,}812 \\
 \midrule
-Full corpus (oracle) & 0.995 & -- & -- & -- & -- & 2{,}572{,}335 \\
+Full corpus (oracle) & 0.995 & -- & 2{,}572{,}335 \\
 \bottomrule
 \end{tabular}
+\end{table}
 
-\smallskip
-\parbox{\textwidth}{\footnotesize Tokens / q: retrieved context tokens for
-retrieval-only methods; total LLM tokens per answer for the two answer-level
-methods. Dashes mark combinations not run at that level.}
+\begin{table}[htbp]
+\centering\small
+\caption{Answer-level results on tier L (89 questions: 71 scored global, 17
+local; one free-text question unscored). Latency is wall-clock seconds per
+answer. The two LensRAG fast-profile rows are two runs of the same
+configuration. Rows marked $^\dagger$ were developed on these questions
+(Section~\ref{sec:threats}).}
+\label{tab:answers}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{@{}lrrrrrr@{}}
+\toprule
+Configuration & Global EM & Global F1 & Local EM & Tokens / q & Median s & $<$45\,s \\
+\midrule
+Standard RAG, Qwen2.5-32B, BM25 + TF-IDF & 0.282 & 0.351 & 1.000 & 2{,}676 & 21.1 & 89 \\
+Standard RAG, Qwen2.5-14B, BM25 + BGE-M3 & 0.239 & 0.351 & 1.000 & 2{,}927 & 9.3 & 89 \\
+\midrule
+LensRAG, first run (3B/14B/32B) & 0.282 & 0.449 & 0.765 & 78{,}759 & 411.8 & 2 \\
+LensRAG, quality stack after fixes$^\dagger$ & 0.423 & 0.559 & 1.000 & 42{,}149 & 120.1 & 2 \\
+LensRAG, fast profile (14B), run 1$^\dagger$ & 0.831 & 0.907 & 1.000 & 2{,}808 & 5.2 & 80 \\
+LensRAG, fast profile (14B), run 2$^\dagger$ & \textbf{0.845} & \textbf{0.922} & 1.000 & 2{,}802 & 5.1 & 80 \\
+\bottomrule
+\end{tabular}}
 \end{table}
 
 \paragraph{RQ1 / H1: standard RAG on global versus local questions.}
-At the answer level the gap is large and significant.
+The gap is large and significant at the answer level.
 \begin{itemize}
   \item On tier L, standard RAG answers every local question correctly (17 of
   17) but only 28.2\% of global questions. The gap is 0.718 (95\% CI
-  [0.606, 0.817], Fisher's exact $p<10^{-7}$).
+  [0.606, 0.817], Fisher's exact $p<10^{-7}$). With BGE-M3 retrieval and the
+  14B model the global score is 23.9\%, so the gap does not depend on the
+  retriever.
   \item At the retrieval level the evidence-recall gap is significant only on
   tier S (BM25: local 1.000 versus global 0.841, Holm $p=0.010$; hybrid:
   1.000 versus 0.771, $p<0.001$).
@@ -1675,30 +1841,75 @@ that fits a realistic context:
   \item On local questions its recall is non-inferior to standard RAG on all
   tiers: equal on S and higher on M and L.
 \end{itemize}
-At the answer level the advantage does not carry through to exact match
-(Table~\ref{tab:h2-answers}):
+At the answer level the result depends on the configuration
+(Tables~\ref{tab:answers} and~\ref{tab:h2-answers}).
 \begin{itemize}
-  \item global exact match is tied at 0.282, with 11 wins and 11 losses
-  (sign test $p=0.58$);
-  \item global set F1 is higher for LensRAG (0.449 versus 0.351), so its
-  answers are more often partly right;
-  \item on local questions LensRAG is significantly worse (0.765 versus
-  1.000, difference $-0.235$, 95\% CI $[-0.471, -0.059]$).
+  \item \emph{First run.} The pipeline as first built, with LLMs reading
+  passages for every step, tied standard RAG on global exact match (0.282,
+  11 wins and 11 losses, sign test $p=0.58$). It was worse on local
+  questions (0.765 against 1.000).
+  \item \emph{Fast profile.} The final configuration answers most questions
+  from structure built once at index time (Section~\ref{sec:architecture}).
+  Global exact match is 0.831 against 0.239 for standard RAG with the same
+  14B model and BGE-M3 retrieval: 43 wins, 1 loss, one-sided sign test
+  $p=2.6\times10^{-12}$, difference 0.592 (95\% CI [0.465, 0.704]). Against
+  the original 32B baseline it is 0.831 against 0.282 (42 wins, 3 losses,
+  $p=4.3\times10^{-10}$). Local questions are answered correctly in both
+  systems (17 of 17), so the non-inferiority condition holds.
+  \item \emph{Repeat run.} A second run of the fast profile agrees with the
+  first on 87 of 89 questions and gives global exact match 0.845 (44 wins,
+  1 loss against the 14B baseline).
 \end{itemize}
-H2 is therefore \textbf{supported at the retrieval level} and \textbf{not
-supported at the answer level}.
+H2 is \textbf{supported at the retrieval level}. At the answer level it is
+\textbf{supported for the final configuration}, with the caveat that this
+configuration was developed on the same 89 questions
+(Section~\ref{sec:threats}); a held-out question set is needed to confirm it.
 
 \begin{table}[htbp]
 \centering\small
 \caption{H2 at the answer level (tier L): exact match, LensRAG minus standard
-RAG, paired by question. Q054 (free text) is excluded.}
+RAG, paired by question. Q054 (free text) is excluded. Fast profile: run 1
+against standard RAG with the same 14B model and BGE-M3 retrieval.}
 \label{tab:h2-answers}
-\begin{tabular}{@{}lrrrrlrrr@{}}
+\begin{tabular}{@{}llrrrrlrrr@{}}
 \toprule
-Scope & $n$ & LensRAG & Std RAG & Diff & 95\% CI & Wins & Losses & $p$ \\
+LensRAG & Scope & $n$ & LensRAG & Std RAG & Diff & 95\% CI & Wins & Losses & $p$ \\
 \midrule
-Global & 71 & 0.282 & 0.282 & 0.000 & [$-0.127$, 0.127] & 11 & 11 & 0.584 \\
-Local & 17 & 0.765 & 1.000 & $-0.235$ & [$-0.471$, $-0.059$] & 0 & 4 & 1.000 \\
+First run & Global & 71 & 0.282 & 0.282 & 0.000 & [$-0.127$, 0.127] & 11 & 11 & 0.584 \\
+First run & Local & 17 & 0.765 & 1.000 & $-0.235$ & [$-0.471$, $-0.059$] & 0 & 4 & 1.000 \\
+Fast profile & Global & 71 & 0.831 & 0.239 & 0.592 & [0.465, 0.704] & 43 & 1 & $<10^{-11}$ \\
+Fast profile & Local & 17 & 1.000 & 1.000 & 0.000 & [0.000, 0.000] & 0 & 0 & -- \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{By question type.}
+Table~\ref{tab:types} shows where the gain comes from. The question types that
+need counting, averaging or ranking over many documents or records go from
+0.00--0.42 set F1 under standard RAG to 0.95--1.00. Local questions are
+answered correctly by both systems. Conflict questions remain at 0.50--0.75.
+
+\begin{table}[htbp]
+\centering\small
+\caption{Set F1 by question type on tier L. Standard RAG: Qwen2.5-14B with
+BM25 + BGE-M3. LensRAG: fast profile, runs 1 and 2.}
+\label{tab:types}
+\begin{tabular}{@{}lrrrr@{}}
+\toprule
+Question type & $n$ & Standard RAG & LensRAG run 1 & LensRAG run 2 \\
+\midrule
+local & 17 & 1.00 & 1.00 & 1.00 \\
+count & 16 & 0.06 & 1.00 & 1.00 \\
+extremum & 11 & 0.36 & 1.00 & 1.00 \\
+version difference & 9 & 0.49 & 0.78 & 0.78 \\
+rank & 6 & 0.42 & 0.95 & 0.95 \\
+theme & 6 & 0.56 & 0.95 & 0.95 \\
+aggregate & 5 & 0.00 & 1.00 & 1.00 \\
+conflict & 5 & 0.50 & 0.50 & 0.75 \\
+filter & 5 & 0.73 & 1.00 & 1.00 \\
+temporal & 5 & 0.80 & 0.80 & 0.80 \\
+comparison & 2 & 0.00 & 1.00 & 1.00 \\
+sentiment shift & 2 & 0.00 & 0.50 & 0.50 \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -1708,9 +1919,11 @@ Local & 17 & 0.765 & 1.000 & $-0.235$ & [$-0.471$, $-0.059$] & 0 & 4 & 1.000 \\
   \item \emph{Completeness flag} (retrieval level, \texttt{lensrag\_rerank}):
   it catches 27--33\% of incomplete retrievals (8 of 30 on L, 6 of 18 on M,
   1 of 3 on S). Its false-alarm rate is 0--12\%.
-  \item \emph{Conflict questions:} both methods answer half correctly (0.50).
-  All the documents needed to see a conflict are retrieved for only 20\% of
-  conflict questions on L and 40\% on M.
+  \item \emph{Conflict questions:} the fast profile answers 2 of 4 scored
+  conflict questions in run 1 and 3 of 4 in run 2; standard RAG answers 2.
+  Conflict questions still go through passage retrieval, and all the
+  documents needed to see a conflict are retrieved for only 20\% of conflict
+  questions on L and 40\% on M.
 \end{itemize}
 H3 requires detection above 50\%, so it is \textbf{not supported}. Precision
 and recall of the conflict flag itself, against the twelve planted conflicts,
@@ -1720,7 +1933,7 @@ were not measured.
 \label{sec:ablations}
 
 \paragraph{Corpus size.}
-LensRAG's advantage over top-$k$ RAG grows with the corpus:
+LensRAG's retrieval advantage over top-$k$ RAG grows with the corpus:
 \begin{itemize}
   \item on S, both reach high global recall (0.994 versus 0.771--0.841) and
   the F1 difference is not significant;
@@ -1751,15 +1964,55 @@ recall from 0.714 to 0.772 and F1 from 0.561 to 0.579. The cost is 2.7 times
 the context (21.8k tokens) and a median retrieval latency of 3.6\,s instead
 of 0.2\,s. On M the judge raises recall but lowers F1 (0.415 to 0.374).
 
+\paragraph{Answer paths, added one at a time.}
+The fast profile was built in steps, each measured with a full run of the 89
+questions (Table~\ref{tab:steps}). Each step adds an answer path that
+replaces LLM reading with computation over structure built at index time.
+\begin{itemize}
+  \item \emph{Fast profile with the table-fact index and exact record fields}
+  (step 1): rule-based classification, template answers and the two
+  structured paths cut the median from 120\,s to 14\,s.
+  \item \emph{Field-query repairs and code-written answers} (step 2): most of
+  the accuracy gain, from 0.52 to 0.73 global exact match, came from making
+  the 14B model's field queries reliable: checking every filter against the
+  question and reading answers in code rather than letting the model restate
+  them.
+  \item \emph{Record labels, the document catalogue and parallel calls}
+  (step 3): sentiment labels made once at index time and the document
+  catalogue moved eleven slow questions onto structured paths. Serving four
+  requests in parallel raised throughput 2.5 times for generation, but only
+  1.2--1.5 times end to end, because reading long prompts dominates.
+\end{itemize}
+
+\begin{table}[htbp]
+\centering\small
+\caption{The fast profile built in steps (tier L, Qwen2.5-14B only). Every
+row is a full run of the 89 questions.}
+\label{tab:steps}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{@{}lrrrrrr@{}}
+\toprule
+Configuration & Global EM & Global F1 & Median s & p90 s & $<$45\,s & Tokens / q \\
+\midrule
+Quality stack after fixes (3B/14B/32B) & 0.423 & 0.559 & 120.1 & 891.0 & 2 & 42{,}149 \\
+Step 1: fast profile, fact table, record fields & 0.521 & 0.589 & 14.1 & 198.4 & 69 & 7{,}580 \\
+Step 2: + field-query repairs, code-written answers & 0.732 & 0.825 & 5.9 & 180.4 & 69 & 6{,}484 \\
+Step 3: + record labels, catalogue, parallel calls & 0.831 & 0.907 & 5.2 & 36.9 & 80 & 2{,}808 \\
+\bottomrule
+\end{tabular}}
+\end{table}
+
 \paragraph{Mode B scoring.}
-Reading Mode B answers from the estimate rather than through the LLM
-corrected one answer that had been lost, out of 15 estimates. The other
-estimates were wrong in value, not in format (Section~\ref{sec:errors}).
+In the quality stack, reading Mode B answers from the estimate rather than
+through the LLM corrected one answer that had been lost, out of 15 estimates.
+In the fast profile no question uses Mode B any more: the record-log
+questions are answered exactly from fields and index-time labels.
 
 \paragraph{Not run.}
 The planned ablations of the context header, entity scoping, chunk size and
 stale-document inclusion were not run. Nor was the answer-level contribution
-of the four non-LLM components. All are left to future work.
+of the NER, NLI and RoBERTa sentiment components, which the fast profile does
+not use. All are left to future work.
 
 \section{Cost--Performance Trade-offs}
 \label{sec:cost}
@@ -1786,31 +2039,58 @@ frontier.}
 \label{fig:cost}
 \end{figure}
 
-The answer level reverses the cost picture. Standard RAG makes one LLM call
-per question (2.7k tokens, median 21\,s). LensRAG makes 34 calls on average:
+\paragraph{Answer cost.}
+The first LensRAG run read passages with an LLM at every step: 34 calls,
+78.8k tokens and a median of 6.9 minutes per answer, 15.0 hours for all 89
+answers against 0.6 hours for standard RAG. The fast profile reverses this.
+It uses 2.4 LLM calls and 2.8k tokens per question, about the same as
+standard RAG (1 call, 2.7--2.9k tokens), and answers all 89 questions in
+0.42 hours.
+
+\paragraph{Latency.}
+A target of 45 seconds per question was set for interactive use.
+Table~\ref{tab:paths} breaks the fast profile down by the path that answered
+each question.
 \begin{itemize}
-  \item 78.8k tokens per question (91.7k for global questions, 23.9k for
-  local);
-  \item a median of 6.9 minutes per answer;
-  \item a 95th percentile of 26 minutes, driven by Mode B estimates, which
-  label 150 records three times each;
-  \item 15.0 hours for all 89 answers, against 0.6 hours for standard RAG.
+  \item The three structured paths answer 78 of 89 questions, all within
+  45\,s; the slowest takes 17\,s.
+  \item The 11 questions that still need passages read by the LLM take a
+  median of 61\,s. Nine exceed 45\,s: five conflict questions, two temporal
+  questions and two count questions (Q050, Q057) that fell through to
+  passage retrieval.
+  \item Overall the median is 5.2\,s (standard RAG: 9.3\,s with the 14B
+  model), the 90th percentile 37\,s and the maximum 265\,s.
 \end{itemize}
-With local models this cost is time, not money. With an API model it would be
-about 30 times the token cost of standard RAG, for no gain in exact match in
-this configuration.
+
+\begin{table}[htbp]
+\centering\small
+\caption{Fast profile by answer path (tier L, run 1).}
+\label{tab:paths}
+\begin{tabular}{@{}lrrrrrr@{}}
+\toprule
+Answer path & $n$ & EM & Set F1 & Median s & Max s & Tokens / q \\
+\midrule
+Table-fact index & 44 & 0.89 & 0.95 & 2.6 & 10.6 & 672 \\
+Record fields & 29 & 0.86 & 0.96 & 7.3 & 17.4 & 1{,}217 \\
+Document catalogue & 5 & 1.00 & 1.00 & 6.3 & 9.7 & 1{,}385 \\
+Passage retrieval + LLM & 11 & 0.70 & 0.70 & 61.1 & 264.5 & 16{,}195 \\
+\bottomrule
+\end{tabular}
+\end{table}
 
 \section{Error Analysis}
 \label{sec:errors}
 
-LensRAG answered 33 of 88 scored questions exactly. The 55 misses fall into
-four groups (Table~\ref{tab:errors}).
+\paragraph{First run.}
+The first LensRAG run answered 33 of 88 scored questions exactly. Its misses
+fell into four groups (Table~\ref{tab:errors}), and they motivated the
+changes in the final configuration.
 
 \begin{table}[htbp]
 \centering\small
-\caption{Causes of LensRAG's exact-match misses on tier L. ``Evidence
-missed'' uses the retrieval benchmark's LensRAG run as a proxy, which has the
-same index and planner.}
+\caption{Causes of the first LensRAG run's exact-match misses on tier L.
+``Evidence missed'' uses the retrieval benchmark's LensRAG run as a proxy,
+which has the same index and planner.}
 \label{tab:errors}
 \begin{tabularx}{\textwidth}{@{}lrX@{}}
 \toprule
@@ -1825,34 +2105,44 @@ Partly right (set F1 $>0$) & 8 & theme (4), filter, rank; e.g.\ Q019 returned th
 \end{table}
 
 \begin{itemize}
-  \item \emph{Local questions lost.} Four local questions were answered wrongly.
-  \begin{itemize}
-    \item In two (Q008, Q012), the answer is an average of several values
-    (9.33 versus the gold 6). This suggests the single-country lookup was
-    treated as an aggregate. The question type chosen by the classifier is
-    not recorded in the answer log, so this is inferred, not observed.
-    \item In one (Q014), the answer took a stale handbook value (INR\,500)
-    instead of the current policy (INR\,600).
-  \end{itemize}
-  Standard RAG answers the same questions directly from the top chunk.
+  \item \emph{Parameters taken from a small model.} Several losses came from
+  the 3B classifier reading a stated condition wrongly: the wrong sort
+  direction (Q026) or ``at least'' for ``more than'' (Q029). Parameters the
+  question states in words are now taken by rules, and the model only fills
+  what is unstated.
+  \item \emph{Values in the wrong unit or version.} ``10 working days'' was
+  compared with values in weeks, and a circular announcing a version-3.0
+  change was used for a version-2.0 question. Units are now normalised, and
+  a fact counts for a version only if it held while that version was in
+  force.
   \item \emph{Sampled labels are biased.} The gold value fell inside the
   reported 95\% interval for only half of the 18 answers that carry an
-  interval, against 95\% for well-calibrated intervals. The intervals
-  express sampling error but not labelling error. When the 14B model labels
-  records systematically wrongly, the interval is narrow and wrong. Examples
-  are Q080 (estimated share 0.76, gold 0.04) and Q089 (1{,}087 versus 819).
-  \item \emph{Temporal and version questions.} LensRAG scored 0.20 on
-  temporal questions against 0.60 for standard RAG, and in most misses the
-  evidence was not retrieved. A likely cause is the scoping step. It
-  excludes superseded documents unless the question names a version, but
-  temporal questions name a date instead, so the circular or earlier
-  version that holds the answer can be filtered out.
-  \item \emph{Where LensRAG helped.} It was more accurate on count (0.38
-  versus 0.12) and aggregate questions (0.20 versus 0.00), and had higher
-  set F1 on theme (0.61 versus 0.39), version-difference (0.54 versus 0.33)
-  and rank questions. These are the question types that need many
-  documents.
+  interval. The intervals express sampling error but not labelling error.
+  Record logs are now read exactly from their fields, with sentiment
+  labelled once for every record.
 \end{itemize}
+
+\paragraph{Final configuration.}
+Run 1 of the fast profile misses 12 of 88 scored questions on exact match.
+\begin{itemize}
+  \item \emph{Ties at the cut-off (5: Q024, Q026, Q059, Q073, Q083).} Two
+  items share the last place of a top-$k$ list, or tied items are listed in
+  a different order from the gold. LensRAG now lists every tied item, which
+  scores 0.86--1.00 set F1 but not exact match.
+  \item \emph{Values stated only in prose (2: Q042, Q043).} The table-fact
+  index covers Markdown tables; a value written in a sentence of an older
+  version is not in it, and the wrong attribute was chosen instead.
+  \item \emph{Index-time sentiment labels (2: Q081, Q087).} For Q081 the
+  share of negative exit conversations after 1 April is close to the ledger
+  (0.58 against 0.56), but the share before it is 0.61 against 0.36, so the
+  reported change has the wrong sign: the 14B labeller disagrees with the
+  ledger on the earlier conversations. Q087 is off by one comment in one
+  count.
+  \item \emph{Passage retrieval (3: Q046, Q052, Q053).} A temporal count and
+  two conflict questions, the same types that are slow
+  (Section~\ref{sec:cost}). Q052 was answered correctly in run 2.
+\end{itemize}
+Standard RAG answers one question that the fast profile misses (Q046).
 
 \chapter{Discussion}
 \label{ch:discussion}
@@ -1866,63 +2156,88 @@ The results separate two claims that are often merged:
   for. Entity-scoped retrieval over context-enriched chunks roughly doubles
   the evidence that reaches the generator on large corpora, at a small
   fraction of long-context cost.
-  \item \emph{Correctness.} Coverage alone does not produce correct
-  aggregate answers. Between retrieval and the answer sit classification,
-  extraction, labelling and formatting, each done here by a 3B--32B local
-  model. Errors at each step compound: a pipeline of individually reasonable
-  steps can equal a single top-$k$ call in accuracy while costing 30 times
-  more.
+  \item \emph{Correctness.} Coverage alone did not produce correct aggregate
+  answers. In the first run, classification, extraction, labelling and
+  formatting were each done by a 3B--32B model reading passages. Errors at
+  each step compounded, and a pipeline of individually reasonable steps
+  equalled a single top-$k$ call in accuracy while costing 30 times more.
 \end{itemize}
-The error analysis shows where the losses occur:
-\begin{itemize}
-  \item routing local questions down the global path;
-  \item filtering out superseded documents that temporal questions need;
-  \item treating sampling error as the only uncertainty in estimates.
-\end{itemize}
-Each is a design choice that can be changed, rather than a limit of the
-approach.
+What turned coverage into correct answers was not more or larger LLM calls
+but moving work out of them. Facts that the corpus states in tables, fields
+and document metadata were read once, at index time, into structures that
+code can count, rank and filter exactly. The LLM's job shrank to choosing
+what to compute, and even that choice is checked against the question before
+it runs. With the same 14B model, this raised global exact match from 0.24
+for standard RAG to 0.83--0.85, at the same token cost and a lower median
+latency.
+
+The remaining errors sit where this structure ends: values stated only in
+prose, conflicts between documents, and opinions that must be inferred from
+free text. These still need an LLM to read passages, and they are both the
+slowest and the least accurate questions.
 
 \section{Implications for Practitioners}
 \label{sec:practice}
 
 \begin{itemize}
-  \item \textbf{Route conservatively.} Send a question down the aggregation
-  path only when it is clearly global, and default to standard RAG
-  otherwise. Standard RAG answered every local question correctly.
-  \item \textbf{Use coverage retrieval when a corpus outgrows the context
-  window.} When the whole corpus fits (tier S here), long-context prompting
-  or top-$k$ retrieval with a larger $k$ is simpler and as good.
-  \item \textbf{Treat estimates from LLM labels as biased, not only noisy.}
-  Validate the labelling model on a small hand-labelled set before reporting
-  intervals.
-  \item \textbf{Size models to the step.} Small models are adequate for
-  extraction with verbatim spans, but classification errors are costly
-  because they change the whole path. The classifier is the step where a
-  stronger model pays off.
+  \item \textbf{Build structure at index time.} Most corpus-level questions
+  in enterprise documents ask about values that are already stated in
+  regular forms: tables, labelled record fields, document metadata. Reading
+  them once is exact and takes seconds; asking an LLM to rediscover them per
+  question is slow and error-prone.
+  \item \textbf{Let the LLM choose, and let code compute and check.} Have the
+  model map a question to a small query, then validate the query against
+  the question and the data before running it. Most of the accuracy gain
+  here came from such checks, not from prompts.
+  \item \textbf{Take stated parameters from the text.} Directions,
+  thresholds, versions and $k$ written in the question should be parsed by
+  rules; small models misread them often enough to change the answer.
+  \item \textbf{Label free text once.} Sentiment or theme labels needed for
+  counting should be produced for every record at index time, not sampled
+  per question, and checked against a hand-labelled sample: here the labeller
+  disagreed with the ledger on part of the data.
+  \item \textbf{Fit the serving set-up to the workload.} One resident model
+  with parallel slots avoids model swaps and raises throughput; on Apple
+  silicon, reading long prompts then dominates, so the remaining lever is
+  shorter prompts.
   \item \textbf{Measure answers, not only retrieval.} Evaluating retrieval
-  alone would have shown a clear win here.
+  alone would have shown a clear win for the first version, which did not
+  answer more questions correctly.
 \end{itemize}
 
 \section{Implications for Research}
 \label{sec:research-implications}
 
 Benchmarks for corpus-level question answering should report retrieval
-coverage and answer accuracy separately, since they diverge sharply here.
-Interval coverage is a useful and rarely reported check of estimate
-calibration. The synthetic, ledger-first corpus made exact answers possible
-for counting, ranking and sentiment-shift questions over thousands of
-records, which hand-annotated corpora cannot provide at this scale.
+coverage and answer accuracy separately, since they diverged sharply here.
+They should also report latency per question, since the same method ranged
+from 412 seconds to 5 seconds per answer. Interval coverage is a useful and
+rarely reported check of estimate calibration. The synthetic, ledger-first
+corpus made exact answers possible for counting, ranking and sentiment-shift
+questions over thousands of records, which hand-annotated corpora cannot
+provide at this scale. Its regular formatting, however, is also what makes
+the index-time structures effective, and real documents will be less
+regular.
 
 \section{Limitations}
 \label{sec:limitations}
 
 \begin{itemize}
-  \item \textbf{Configuration.} The answer-level run used local open-weight
-  models up to 32B and omitted the reranker, NER, NLI and sentiment
-  components. Results with stronger or API models, or with all components,
-  may differ.
-  \item \textbf{Runs and sample size.} Answers were generated in a single
-  run. The question set is small, with 72 global questions on tier L.
+  \item \textbf{Development on the test set.} The final configuration was
+  developed on the 89 questions it is scored on, so its accuracy is a
+  development score. No held-out questions were run.
+  \item \textbf{Format dependence.} The table, record and catalogue parsers
+  rely on Markdown tables, bold field labels and YAML front matter. Facts
+  stated only in prose are not covered, and documents formatted differently
+  would need new parsers or would fall back to passage retrieval.
+  \item \textbf{Runs and sample size.} The fast profile was run twice and
+  the other configurations once. The question set is small, with 71 scored
+  global questions on tier L, and 2--16 questions per type.
+  \item \textbf{Labelling accuracy.} Record sentiment comes from one 14B
+  model with no hand-labelled check; it disagrees with the ledger on part of
+  the exit conversations.
+  \item \textbf{Remaining latency.} Nine of 89 questions, those that need
+  passages read, still take 50--265 seconds.
   \item \textbf{Baselines not run.} No GlobalRAG-style baseline and no
   answer-level long-context baseline were run.
   \item \textbf{Corpus.} The corpus is synthetic and template-generated, so
@@ -1974,13 +2289,16 @@ high-risk.
   \item \textbf{Findings.}
   \begin{itemize}
     \item Standard RAG answers local questions far better than global ones
-    (1.00 versus 0.28 exact match).
+    (1.00 versus 0.24--0.28 exact match).
     \item LensRAG doubles global evidence recall on large corpora at 0.3\% of
     long-context cost.
-    \item With local models this did not raise exact match. Set F1 improved,
-    local accuracy fell, and the failure modes are identified.
+    \item Better retrieval alone did not raise exact match. Reading tables,
+    record fields and document metadata once at index time, and computing
+    answers in code, did: global exact match 0.83--0.85 against 0.24 for
+    standard RAG with the same 14B model, with 80 of 89 answers within 45
+    seconds. These are development scores on the test questions.
   \end{itemize}
-  \item \textbf{Software.} An open, tested implementation (108 tests) with a
+  \item \textbf{Software.} An open, tested implementation (140 tests) with a
   one-command experiment.
 \end{itemize}
 
@@ -1988,21 +2306,25 @@ high-risk.
 \label{sec:future}
 
 \begin{enumerate}
-  \item Re-run the answer level with all components enabled, and with a
-  stronger API model for classification and answering, to separate method
-  from model capacity.
-  \item Route conservatively: fall back to standard RAG unless the question
-  is clearly global, and add a check that a local question returns a single
-  value.
-  \item Keep superseded documents in scope for date questions, and resolve
-  them by effective date.
-  \item Calibrate Mode B intervals for labelling error by checking the
-  labeller on a hand-labelled sample and widening the intervals accordingly.
+  \item Write a held-out question set over the same corpus, with gold
+  answers from the ledger, and score the final configuration on it without
+  further changes.
+  \item Extend the fact index to values stated in prose, for example by
+  extracting them once at index time with the LLM and checking each against
+  its source sentence.
+  \item Shorten the prompts of the passage-retrieval path, which now holds
+  all the slow questions: extraction that returns line numbers instead of
+  copied spans, and smaller pages for conflict questions.
+  \item Check the record labeller against a hand-labelled sample, and report
+  label accuracy with every labelled answer.
+  \item Re-run the answer level with a stronger API model, to separate
+  method from model capacity.
   \item Measure conflict-flag precision and recall against the twelve
   planted conflicts.
-  \item Add a GlobalRAG-style baseline, repeat runs with several seeds, and
-  run the planned ablations.
-  \item Evaluate on a second domain using the legal configuration.
+  \item Add a GlobalRAG-style baseline, more repeated runs, and the planned
+  ablations.
+  \item Evaluate on a second domain using the legal configuration, which
+  would also test the parsers on differently formatted documents.
 \end{enumerate}
 
 \section{Publication Plan}
