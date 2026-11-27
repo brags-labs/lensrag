@@ -1469,6 +1469,9 @@ even tier S. Long context is therefore evaluated at the retrieval level only.
   \item \emph{Completeness check (H3):} detection rate and false-alarm rate.
   An answer is incomplete when a gold evidence document was not retrieved,
   and it is flagged when a scope found no relevant evidence.
+  \item \emph{Conflict scan (H3):} the share of the ledger's planted
+  conflicts that a flag names, the flags that are false alarms, and whether
+  the legitimate version updates are wrongly flagged as conflicts.
 \end{itemize}
 
 \paragraph{Statistical tests.}
@@ -1596,7 +1599,7 @@ LensRAG is a Python 3.13 package with the following layout:
   \item \texttt{lensrag/full/}: the LLM pipeline, providers, model routing
   and the local components;
   \item \texttt{lensrag/domains/}: YAML domain configurations;
-  \item \texttt{tests/}: 140 unit tests;
+  \item \texttt{tests/}: 145 unit tests;
   \item \texttt{RUN\_EXPERIMENT.sh}: runs the whole experiment.
 \end{itemize}
 
@@ -1717,6 +1720,32 @@ the scopes of a Mode C map step. Token usage was first counted as the
 difference of a client's running totals before and after a call, which
 double-counts when calls overlap. Each client now records its own call's
 usage per thread.
+
+\paragraph{Index-time conflict scan.}
+At question time a conflict is visible only when every document that states
+the fact is retrieved together. The scan (\texttt{lensrag/conflict\_scan.py})
+looks for conflicts in the table facts instead, once, after the index is
+loaded. The domain configuration names the document types that state policy
+(manual chapters), the types that change it (circulars) and the types that
+restate it (FAQs, handbooks, benefits summaries). The scan reports four kinds:
+\begin{itemize}
+  \item \emph{version change}: a manual chapter states a different number in
+  different versions;
+  \item \emph{pending update}: an announced circular changes a number the
+  current manual states;
+  \item \emph{unapplied update}: an in-force circular changed a number that
+  the current manual still states;
+  \item \emph{stale restatement}: a restating document disagrees with the
+  current manual or with an in-force circular.
+\end{itemize}
+Facts are matched within the same country (or company-wide) and the same
+kind of unit. Matching on embedded row labels alone was too weak: a
+circular's ``Earned leave increase'' and the manual's ``Paid annual leave''
+are about 0.6--0.7 apart. So for each circular or restating fact the 14B model
+picks, from its five nearest candidates, the row that states the same
+entitlement, if any: one call per fact, 757 calls in about 16 minutes. Each
+flag also names the value that applies: an in-force circular, then the
+current manual; a restating document never wins.
 
 \paragraph{Repetition aborts.}
 Under greedy decoding, Qwen models occasionally fall into a repetition loop,
@@ -1925,9 +1954,55 @@ sentiment shift & 2 & 0.00 & 0.50 & 0.50 \\
   documents needed to see a conflict are retrieved for only 20\% of conflict
   questions on L and 40\% on M.
 \end{itemize}
-H3 requires detection above 50\%, so it is \textbf{not supported}. Precision
-and recall of the conflict flag itself, against the twelve planted conflicts,
-were not measured.
+The index-time conflict scan (Chapter~\ref{ch:implementation}) was then
+scored once against the corpus ledger. The ledger lists ten planted conflicts
+and two legitimate version updates, which serve as negative controls. The
+matching rule was fixed before scoring: a conflict is found when one flag
+names at least two of its documents. On review, a flag that names the right
+documents but pairs the wrong rows is not counted.
+Table~\ref{tab:conflict-scan} gives the result.
+\begin{itemize}
+  \item \emph{Found:} two of ten conflicts, both future-dated circulars
+  (CF-02, CF-04), each with the value that applies today. A third flag
+  (CF-03) names the right documents but pairs the circular with the wrong
+  manual row, so it is not counted.
+  \item \emph{Negative controls:} CF-11 is reported as a version change, not
+  as a conflict, which is the right reading; CF-12 states its values only in
+  prose, so the scan does not see it.
+  \item \emph{False alarms:} 2 of the 5 flags that are not version changes.
+  Both pair a company entitlement with a statutory one (Australia, United
+  Arab Emirates).
+  \item \emph{Misses:} besides CF-03, one conflict states its value only in
+  FAQ prose (CF-06), one needs the excluded Chapter~37 (CF-01), and five have
+  table facts on both sides but no correct pair was found (CF-05, CF-07,
+  CF-08, CF-09, CF-10).
+\end{itemize}
+With either measure, completeness (27--33\%) or conflicts (20\%), H3 is
+\textbf{not supported}. The scan's misses were not used to change it: this
+is a first score.
+
+\begin{table}[htbp]
+\centering\small
+\caption{Index-time conflict scan against the ten planted conflicts and two
+version controls. A flag counts when it names two of the conflict's
+documents and pairs the right rows.}
+\label{tab:conflict-scan}
+\begin{tabular}{@{}lrl@{}}
+\toprule
+Kind (planted) & Found & Why missed \\
+\midrule
+future-dated circular (4) & 2 & wrong row (CF-03), no pair (CF-05) \\
+stale FAQ (2) & 0 & value in prose (CF-06), no pair (CF-07) \\
+stale handbook (2) & 0 & no pair found \\
+stale benefits summary (1) & 0 & no pair found \\
+inconsistency within manual (1) & 0 & needs excluded Chapter 37 \\
+\midrule
+conflicts found & 2 / 10 & \\
+flags that are not version changes & 5 & 2 false alarms \\
+version controls flagged as conflicts & 0 / 2 & CF-11 reported as a version change \\
+\bottomrule
+\end{tabular}
+\end{table}
 
 \section{Ablations and Sensitivity}
 \label{sec:ablations}
@@ -2173,7 +2248,10 @@ latency.
 
 The remaining errors sit where this structure ends: values stated only in
 prose, conflicts between documents, and opinions that must be inferred from
-free text. These still need an LLM to read passages, and they are both the
+free text. Index-time structure did not carry over to conflicts in the same
+way: a scan over the table facts found two of ten planted conflicts, because
+most conflicting values are stated in prose or are hard to pair across
+documents. These still need an LLM to read passages, and they are both the
 slowest and the least accurate questions.
 
 \section{Implications for Practitioners}
@@ -2242,9 +2320,10 @@ regular.
   answer-level long-context baseline were run.
   \item \textbf{Corpus.} The corpus is synthetic and template-generated, so
   its phrasing is more regular than real documents.
-  \item \textbf{Conflict and faithfulness measures.} Conflict-flag precision
-  and recall, and claim-level faithfulness, were not measured against human
-  judgements.
+  \item \textbf{Conflict and faithfulness measures.} The conflict scan was
+  scored against the ten planted conflicts only: too few to estimate its
+  recall closely, and it sees only values stated in tables. Claim-level
+  faithfulness was not measured against human judgements.
 \end{itemize}
 
 \section{Ethical, Legal and Societal Considerations}
@@ -2298,7 +2377,7 @@ high-risk.
     standard RAG with the same 14B model, with 80 of 89 answers within 45
     seconds. These are development scores on the test questions.
   \end{itemize}
-  \item \textbf{Software.} An open, tested implementation (140 tests) with a
+  \item \textbf{Software.} An open, tested implementation (145 tests) with a
   one-command experiment.
 \end{itemize}
 
@@ -2319,8 +2398,9 @@ high-risk.
   label accuracy with every labelled answer.
   \item Re-run the answer level with a stronger API model, to separate
   method from model capacity.
-  \item Measure conflict-flag precision and recall against the twelve
-  planted conflicts.
+  \item Extend the conflict scan to values stated in prose, and give its
+  matching step the employee group (statutory against company entitlement),
+  then score it on conflicts planted after the change.
   \item Add a GlobalRAG-style baseline, more repeated runs, and the planned
   ablations.
   \item Evaluate on a second domain using the legal configuration, which

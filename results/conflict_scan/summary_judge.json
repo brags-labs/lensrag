@@ -1,0 +1,162 @@
+{
+ "judge": {
+  "threshold": null,
+  "flags": 39,
+  "by_kind": {
+   "version_change": 34,
+   "update_pending": 3,
+   "stale_secondary": 2
+  },
+  "detected": 4,
+  "planted": 12,
+  "resolution_right": 3,
+  "resolution_scored": 12,
+  "non_version_flags": 5,
+  "non_version_matching_planted": 3,
+  "conflicts": [
+   {
+    "id": "CF-01",
+    "kind": "intra_manual",
+    "detected": false,
+    "flags": 0,
+    "resolution_scored": true,
+    "resolution_right": false,
+    "flag_kinds": []
+   },
+   {
+    "id": "CF-02",
+    "kind": "future_circular",
+    "detected": true,
+    "flags": 1,
+    "resolution_scored": true,
+    "resolution_right": true,
+    "flag_kinds": [
+     "update_pending"
+    ]
+   },
+   {
+    "id": "CF-03",
+    "kind": "future_circular",
+    "detected": true,
+    "flags": 1,
+    "resolution_scored": true,
+    "resolution_right": false,
+    "flag_kinds": [
+     "update_pending"
+    ]
+   },
+   {
+    "id": "CF-04",
+    "kind": "future_circular",
+    "detected": true,
+    "flags": 1,
+    "resolution_scored": true,
+    "resolution_right": true,
+    "flag_kinds": [
+     "update_pending"
+    ]
+   },
+   {
+    "id": "CF-05",
+    "kind": "future_circular",
+    "detected": false,
+    "flags": 0,
+    "resolution_scored": true,
+    "resolution_right": false,
+    "flag_kinds": []
+   },
+   {
+    "id": "CF-06",
+    "kind": "stale_faq",
+    "detected": false,
+    "flags": 0,
+    "resolution_scored": true,
+    "resolution_right": false,
+    "flag_kinds": []
+   },
+   {
+    "id": "CF-07",
+    "kind": "stale_faq",
+    "detected": false,
+    "flags": 0,
+    "resolution_scored": true,
+    "resolution_right": false,
+    "flag_kinds": []
+   },
+   {
+    "id": "CF-08",
+    "kind": "stale_handbook",
+    "detected": false,
+    "flags": 0,
+    "resolution_scored": true,
+    "resolution_right": false,
+    "flag_kinds": []
+   },
+   {
+    "id": "CF-09",
+    "kind": "stale_handbook",
+    "detected": false,
+    "flags": 0,
+    "resolution_scored": true,
+    "resolution_right": false,
+    "flag_kinds": []
+   },
+   {
+    "id": "CF-10",
+    "kind": "stale_benefits",
+    "detected": false,
+    "flags": 0,
+    "resolution_scored": true,
+    "resolution_right": false,
+    "flag_kinds": []
+   },
+   {
+    "id": "CF-11",
+    "kind": "version",
+    "detected": true,
+    "flags": 1,
+    "resolution_scored": true,
+    "resolution_right": true,
+    "flag_kinds": [
+     "version_change"
+    ]
+   },
+   {
+    "id": "CF-12",
+    "kind": "version",
+    "detected": false,
+    "flags": 0,
+    "resolution_scored": true,
+    "resolution_right": false,
+    "flag_kinds": []
+   }
+  ],
+  "judge_stack": "local-qwen-14b",
+  "seconds": 958.9,
+  "usage": {
+   "prompt_tokens": 255349,
+   "completion_tokens": 4835,
+   "cache_read_tokens": 0,
+   "cache_write_tokens": 0,
+   "calls": 757,
+   "by_role": {
+    "extract": {
+     "calls": 757,
+     "prompt_tokens": 255349,
+     "completion_tokens": 4835
+    }
+   }
+  },
+  "review": {
+   "CF-03": "documents match but the manual row paired is carer's leave, not annual leave: a wrong match",
+   "stale_secondary BEN-AE/CH45, BEN-AU/CH47": "false alarms: a company entitlement paired with a statutory one",
+   "strict_detected": [
+    "CF-02",
+    "CF-04",
+    "CF-11"
+   ],
+   "negative_controls": "CF-11 and CF-12 are legitimate version updates in the ledger; CF-11 is flagged as version_change (correct), CF-12 has no table facts",
+   "conflicts_found_strict": "2/10 (CF-02, CF-04)"
+  }
+ }
+}
