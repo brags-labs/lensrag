@@ -1,4 +1,5 @@
 from __future__ import annotations
+import os
 import json, re, zipfile, string
 from pathlib import Path
 from dataclasses import dataclass, field
@@ -220,5 +221,6 @@ def chunk_document(doc: Document, max_words=260, overlap_words=40, domain: Domai
     return chunks
 
 def load_gold(corpus_dir: Path):
-    path=corpus_dir/"gold"/"questions.jsonl"
+    # LENSRAG_GOLD_FILE runs the evaluation on another question file (the held-out H2 set).
+    path=Path(os.environ["LENSRAG_GOLD_FILE"]) if os.getenv("LENSRAG_GOLD_FILE") else corpus_dir/"gold"/"questions.jsonl"
     return [json.loads(x) for x in path.read_text(encoding="utf-8").splitlines() if x.strip()]
