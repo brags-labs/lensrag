@@ -1,0 +1,28 @@
+{
+  "answer_level": [
+    {
+      "tier": "L",
+      "method": "lensrag",
+      "scope": "global",
+      "n": 72,
+      "exact_match": 0.7323943661971831,
+      "set_f1": 0.8245025709814442,
+      "interval_coverage": 0.8275862068965517,
+      "n_interval": 29,
+      "tokens": 7874.166666666667,
+      "latency_s": 6.937124332995154
+    },
+    {
+      "tier": "L",
+      "method": "lensrag",
+      "scope": "local",
+      "n": 17,
+      "exact_match": 1.0,
+      "set_f1": 1.0,
+      "interval_coverage": NaN,
+      "n_interval": 0,
+      "tokens": 594.4705882352941,
+      "latency_s": 2.054956000065431
+    }
+  ]
+}

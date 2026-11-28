@@ -1,0 +1,23 @@
+{
+  "tier": "L",
+  "methods": [
+    "rag_topk",
+    "lensrag"
+  ],
+  "llm_provider": "RoutedLLM",
+  "llm_model": "classify=lensrag-qwen2.5-3b / extract=lensrag-qwen2.5-14b / map=lensrag-qwen2.5-14b / reduce=lensrag-qwen2.5-32b / verify=lensrag-qwen2.5-14b / answer=lensrag-qwen2.5-32b",
+  "llm_effort": null,
+  "top_k": 10,
+  "questions": 89,
+  "domain": "hr",
+  "rag_topk_retrieval": "hybrid BM25 + TF-IDF (the stack was set only by LENSRAG_LLM_STACK, which run_answers did not read before the fix)",
+  "lensrag_components": {
+    "embedding_model": "BAAI/bge-m3 (from the index)",
+    "reranker_model": null,
+    "spacy_model": null,
+    "nli_model": null,
+    "sentiment_model": null
+  },
+  "lensrag_index": "/Users/gautampandey/learn/capstone/lensrag/artifacts/index_L_bge-m3",
+  "note": "Full run 21-22 Nov 2026 (RUN_EXPERIMENT.sh, LENSRAG_LLM_STACK=local-qwen). LLM roles were routed to the local-qwen stack; the non-LLM Table 3.1 components were off. Q019 and Q052 were re-run on 22 Nov with the repetition retry. Mode B predictions re-derived from stored estimates (answers --reformat-estimates)."
+}

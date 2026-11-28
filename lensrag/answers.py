@@ -13,7 +13,7 @@ Methods:
   lensrag             the full LensRAG pipeline (lensrag.full), answer converted to the gold format
 """
 from __future__ import annotations
-import ast, json, re, time
+import ast, hashlib, json, os, re, time
 from pathlib import Path
 import pandas as pd
 from .aggregation import normalize_label
@@ -58,10 +58,18 @@ def _num_eq(a, b):
     return a is not None and b is not None and abs(a - b) <= max(0.01 * abs(b), 0.005)
 
 
+_CURRENCY = "₹$€£"
+_AMOUNT = re.compile(rf"^\s*[{_CURRENCY}]?\s*-?\d[\d,]*(?:\.\d+)?\s*$")
+
+
 def _item_eq(pred, gold, ratio=False):
     g, p = _num(gold, ratio), _num(pred, ratio)
     if isinstance(gold, (int, float)) and not isinstance(gold, bool):
         return _num_eq(p, g)
+    if isinstance(gold, str) and _AMOUNT.match(gold) and _AMOUNT.match(str(pred)):
+        # "₹600" vs "600": the same amount; a different currency symbol is still wrong.
+        gs, ps = [c for c in gold if c in _CURRENCY], [c for c in str(pred) if c in _CURRENCY]
+        return _num_eq(p, g) and (not ps or ps == gs)
     return _norm(pred) == _norm(gold) and _norm(gold) != ""
 
 
@@ -137,6 +145,9 @@ def score_answer(pred, gold, fmt):
 # --- interval coverage (Mode B estimates) -------------------------------------------------
 def _groups_in_order(estimate):
     groups = (estimate or {}).get("groups") or {}
+    order = (estimate or {}).get("order")
+    if order and set(groups) <= set(order):  # field queries keep the question's own order
+        return [groups[k] for k in order if k in groups]
     def key(k):
         try:
             return tuple(ast.literal_eval(k))
@@ -205,18 +216,183 @@ def _ask(llm, question, fmt, context):
     return out.get("answer")
 
 
+_ASKS_COUNT = re.compile(r"\bhow many\b|\bnumber of\b|\bcount\b", re.I)
+_ASKS_SHARE = re.compile(r"\bshare\b|\bproportion\b|\bpercent|\bfraction\b|\brate\b|\bratio\b", re.I)
+
+
+def _point(group, question, fmt):
+    """A group's point estimate as a count or a share, whichever the question asks for."""
+    est, pop = group.get("estimate"), group.get("population")
+    if est is None:
+        return None
+    is_share = "share" in str(group.get("what", "")) or "proportion" in str(group.get("what", ""))
+    if is_share and pop and fmt != "ratio" and _ASKS_COUNT.search(question):
+        return round(est * pop)
+    if not is_share and "number of" in str(group.get("what", "")) and pop and (fmt == "ratio" or _ASKS_SHARE.search(question)):
+        return est / pop
+    return round(est, 3) if isinstance(est, float) else est
+
+
+def answer_from_estimate(estimate, question, fmt):
+    """The answer in the gold format, read straight from a Mode B estimate (None when the
+    estimate's shape doesn't fit the format). Asking the LLM to restate an estimate loses it:
+    small models answer "unsupported" even when the estimate is there."""
+    groups = _groups_in_order(estimate)
+    if not groups:
+        return None
+    if "categories" in groups[0]:
+        g = groups[0]
+        cats = sorted(g["categories"], key=lambda c: -c["estimate"])
+        pop = g.get("population") or g.get("n") or 0
+        values = g.get("values_are") not in (None, "counts")   # means or shares: the value itself
+        def item(c):
+            if values:
+                return [c["category"], round(c["count"], 3)]
+            return [c["category"], round(c["estimate"], 3) if _ASKS_SHARE.search(question) else round(c["estimate"] * pop)]
+        if fmt == "tuple" and cats:
+            return item(cats[0])
+        if fmt == "ranked_list":
+            return [item(c) for c in cats]
+        if fmt in ("set", "list"):
+            return [c["category"] for c in cats]
+        return None
+    if fmt in ("value", "ratio") and len(groups) == 1:
+        return _point(groups[0], question, fmt)
+    if fmt == "tuple" and len(groups) == 2:  # before / after periods, in time order
+        pts = [_point(g, question, fmt) for g in groups]
+        return pts if None not in pts else None
+    return None
+
+
+def answer_from_aggregate(result, fmt):
+    """The requested format, in code, from a computed fact-table result; None if it doesn't fit."""
+    a = result.get("deterministic_result")
+    if a is None:
+        return None
+    def val(r):
+        v = r.get("value")
+        return int(v) if isinstance(v, float) and v.is_integer() else v
+    if isinstance(a, dict) and "changed" in a:
+        if fmt in ("set", "list") and len(a["versions"]) == 2:
+            return a["changed"]
+        if fmt == "value" and len(a["by_version"]) == 1 and len(a["versions"]) == 2:
+            vals = next(iter(a["by_version"].values()))
+            x, y = (vals.get(v) for v in a["versions"])
+            if isinstance(x, (int, float)) and isinstance(y, (int, float)):
+                d = y - x
+                return int(d) if float(d).is_integer() else round(d, 3)
+            return None
+        if fmt == "list" and len(a["by_version"]) == 1:
+            vals = next(iter(a["by_version"].values()))
+            return [int(x) if isinstance(x, float) and x.is_integer() else x for x in (vals.get(v) for v in a["versions"])]
+        return None
+    if isinstance(a, dict) and "catalogue" in a:
+        v = a["catalogue"]
+        if fmt == "value" and not isinstance(v, list):
+            return v
+        if fmt in ("set", "list") and isinstance(v, list):
+            return v
+        return None
+    if isinstance(a, dict) and "count" in a:
+        return a["count"] if fmt == "value" else None
+    rows = [a] if isinstance(a, dict) and "entity" in a else a if isinstance(a, list) else None
+    if isinstance(a, (int, float)) and not isinstance(a, bool):
+        return a if fmt == "value" else None
+    if not rows or not all(isinstance(r, dict) and "entity" in r for r in rows):
+        return None
+    if fmt == "value":
+        if len(rows) != 1:
+            return None
+        v = val(rows[0])
+        return v if isinstance(v, (int, float)) else rows[0].get("value_as_written", v)
+    if fmt == "set":
+        return list(dict.fromkeys(r["entity"] for r in rows))
+    if fmt == "tuple":
+        return [rows[0]["entity"], val(rows[0])] if len(rows) == 1 else None
+    if fmt == "ranked_list":
+        return [[r["entity"], val(r)] for r in rows]
+    return None
+
+
 def _to_format(llm, question, fmt, result):
+    if result.get("answer_source") in ("fact table", "document catalogue"):
+        pred = answer_from_aggregate(result, fmt)
+        if pred is not None:
+            return pred
+    est = result.get("estimate") or {}
+    if result.get("computation_mode") == "estimated" or est.get("field_query"):
+        pred = answer_from_estimate(result.get("estimate"), question, fmt)
+        if pred is not None:
+            return pred
     out = role(llm, "extract").json("Convert this answer to the requested format without changing its content. Return JSON "
                    "{\"answer\": ...} where answer is " + FORMAT_INSTRUCTIONS.get(fmt, "a short answer") + ".",
                    json.dumps({"question": question, "answer": result.get("answer"),
-                               "deterministic_result": result.get("deterministic_result")}, ensure_ascii=False, default=str))
+                               "deterministic_result": result.get("deterministic_result"),
+                               "estimate": result.get("estimate")}, ensure_ascii=False, default=str))
     return out.get("answer")
+
+
+def reformat_estimates(path, questions):
+    """Re-derive and re-score LensRAG answers that have a stored Mode B estimate, without
+    rerunning the pipeline (the estimate is saved in answers.csv). Returns the rows changed."""
+    df = pd.read_csv(path)
+    by_qid = {q["qid"]: q for q in questions}
+    changed = []
+    for i, r in df.iterrows():
+        if r.method != "lensrag" or r.get("computation_mode") != "estimated" or not isinstance(r.estimate, str) or not r.estimate:
+            continue
+        q = by_qid.get(r.qid)
+        pred = answer_from_estimate(json.loads(r.estimate), q["question"], r.answer_format) if q else None
+        if pred is None:
+            continue
+        em, f1 = score_answer(pred, q["answer"], r.answer_format)
+        new = json.dumps(pred, ensure_ascii=False, default=str)
+        if new != r.prediction:
+            changed.append({"qid": r.qid, "before": r.prediction, "after": new, "gold": r.gold,
+                            "exact_match": (r.exact_match, em)})
+        df.loc[i, ["prediction", "exact_match", "set_f1"]] = [new, em, f1]
+    df.to_csv(path, index=False)
+    return changed
+
+
+def run_fingerprint(settings):
+    """A short hash of everything that decides a run's answers (dataclasses included)."""
+    import dataclasses
+    def plain(x):
+        if dataclasses.is_dataclass(x) and not isinstance(x, type):
+            return {k: plain(v) for k, v in sorted(dataclasses.asdict(x).items())}
+        if isinstance(x, dict):
+            return {str(k): plain(v) for k, v in sorted(x.items(), key=lambda kv: str(kv[0]))}
+        if isinstance(x, (list, tuple, set)):
+            return [plain(v) for v in (sorted(x, key=str) if isinstance(x, set) else x)]
+        return x if isinstance(x, (str, int, float, bool, type(None))) else str(x)
+    return hashlib.sha256(json.dumps(plain(settings), sort_keys=True, ensure_ascii=False).encode("utf-8")).hexdigest()[:16]
+
+
+def check_resume(config_path, fingerprint):
+    """Refuse to resume into a folder written by a different experiment (or by an older version
+    that recorded no fingerprint)."""
+    try:
+        old = json.loads(Path(config_path).read_text(encoding="utf-8")).get("fingerprint")
+    except (OSError, ValueError):
+        old = None
+    if old != fingerprint:
+        raise ValueError(f"{Path(config_path).parent}: existing answers come from a different run "
+                         f"(fingerprint {old or 'missing'}, this run {fingerprint}); "
+                         "use a new output folder or resume=False to start again")
 
 
 def run_answers(zip_path, extract_dir, output, tier="L", methods=("rag_topk", "long_context_128k", "lensrag"),
                 top_k=10, llm=None, llm_model=None, llm_provider=None, llm_stack=None, domain="hr", index_dir=None, limit=None, store_dir=None,
-                lexical_fallback=False, qids=None):
-    """Answer every eligible gold question with each method and score it; writes answers.csv."""
+                lexical_fallback=False, qids=None, resume=True):
+    """Answer every eligible gold question with each method and score it; writes answers.csv.
+
+    Each answer is appended to answers.csv as soon as it is scored. With `resume`, answers
+    already in the file without an error are skipped, so an interrupted run continues where it
+    stopped. Standard RAG uses the same embedding model as LensRAG when the stack sets one.
+    A resumed run must have the same fingerprint (corpus, questions, models and settings) as the
+    run that wrote the file; otherwise it stops rather than mix answers from two experiments.
+    """
     from .data import ensure_extracted, load_documents, load_gold, chunk_document
     from .domain import load_domain
     from .experiment import tier_index, LONG_CONTEXT_WINDOWS, TokenCounter, long_context_docs
@@ -232,13 +408,22 @@ def run_answers(zip_path, extract_dir, output, tier="L", methods=("rag_topk", "l
     doc_tokens = {d.doc_id: count(("doc", d.doc_id), d.text) for d in docs}
     index = None
     pipe = None
+    from .full.pipeline import LensRAGPipeline, PipelineConfig, apply_stack_components
+    llm_stack = llm_stack or os.getenv("LENSRAG_LLM_STACK") or None  # same source as create_llm
+    cfg = apply_stack_components(PipelineConfig(tier=tier, domain=dom.source, llm_stack=llm_stack))
+    if os.getenv("LENSRAG_FAST", "").lower() in ("1", "true", "yes"):  # low-latency profile
+        from .full.pipeline import fast_config
+        cfg = fast_config(cfg)
+    stack_embedding = cfg.embedding_model if llm_stack and not lexical_fallback else None
     if "rag_topk" in methods:
-        index, _, _ = tier_index(docs, tier, store_dir, "tfidf", None, dom)
+        if stack_embedding:  # same dense model as LensRAG, for a like-for-like baseline
+            from .embeddings import DenseEncoder
+            index, _, _ = tier_index(docs, tier, store_dir, "dense", DenseEncoder(stack_embedding), dom)
+        else:
+            index, _, _ = tier_index(docs, tier, store_dir, "tfidf", None, dom)
     if "lensrag" in methods:
-        from .full.pipeline import LensRAGPipeline, PipelineConfig
         from .full.index import PersistentHybridIndex
         from .planning import build_inventory
-        cfg = PipelineConfig(tier=tier, domain=dom.source, llm_stack=llm_stack)
         if index_dir and (Path(index_dir) / "metadata.json").exists():
             pipe = LensRAGPipeline.load(index_dir, cfg, use_llm=False)
         else:
@@ -250,11 +435,41 @@ def run_answers(zip_path, extract_dir, output, tier="L", methods=("rag_topk", "l
                 idx = PersistentHybridIndex(chunks, encoder=DenseEncoder(cfg.embedding_model))
             pipe = LensRAGPipeline(idx, build_inventory(docs, dom), None, cfg)
         pipe.llm = llm
+    out = Path(output); out.mkdir(parents=True, exist_ok=True)
+    path = out / "answers.csv"
+    fingerprint = run_fingerprint({
+        "tier": tier, "domain": dom,
+        "corpus": sorted((d.doc_id, hashlib.sha256(d.text.encode("utf-8")).hexdigest()) for d in docs),
+        "questions": hashlib.sha256(json.dumps(load_gold(corpus), sort_keys=True, ensure_ascii=False,
+                                               default=str).encode("utf-8")).hexdigest(),
+        "llm": [type(llm).__name__, getattr(llm, "model", None), getattr(llm, "effort", None), llm_stack],
+        "top_k": top_k, "lexical_fallback": bool(lexical_fallback), "index_dir": str(index_dir) if index_dir else None,
+        "rag_topk_embedding": stack_embedding, "lensrag_config": cfg})
+    done = set()
+    if resume and path.exists():
+        check_resume(out / "answers_config.json", fingerprint)
+        prev = pd.read_csv(path)
+        ok = prev[prev.error.isna() | (prev.error.astype(str) == "")] if "error" in prev else prev
+        prev = ok  # failed answers are retried
+        prev.to_csv(path, index=False)
+        done = set(zip(prev.tier, prev.qid, prev.method))
+    elif path.exists():
+        path.unlink()
+    meta = {"tier": tier, "methods": list(methods), "llm_provider": type(llm).__name__,
+            "llm_model": getattr(llm, "model", None), "llm_effort": getattr(llm, "effort", None), "top_k": top_k,
+            "questions": len(gold), "domain": dom.name,
+            "rag_topk_retrieval": f"hybrid BM25 + {stack_embedding}" if stack_embedding else "hybrid BM25 + TF-IDF",
+            "lensrag_components": {k: getattr(cfg, k) for k in ("embedding_model", "reranker_model", "spacy_model",
+                                                                "nli_model", "sentiment_model")},
+            "lensrag_index": str(index_dir) if index_dir else "built in memory", "fingerprint": fingerprint}
+    (out / "answers_config.json").write_text(json.dumps(meta, indent=2, default=str), encoding="utf-8")
     rows = []
     # Method by method, so consecutive calls share a prompt prefix (the long-context corpus)
     # and stay within the provider's prompt-cache lifetime.
     for method in methods:
         for q in gold:
+            if (tier, q["qid"], method) in done:
+                continue
             fmt = q.get("answer_format", "value")
             scope = "local" if q["type"] == "local" else "global"
             llm.reset_usage() if hasattr(llm, "reset_usage") else None
@@ -279,6 +494,9 @@ def run_answers(zip_path, extract_dir, output, tier="L", methods=("rag_topk", "l
             rows.append({"tier": tier, "qid": q["qid"], "method": method, "query_type": q["type"], "scope": scope,
                          "answer_format": fmt, "prediction": json.dumps(pred, ensure_ascii=False, default=str),
                          "computation_mode": result.get("computation_mode", "") if result else "",
+                         "planned_type": result.get("query_type", "") if result else "",
+                         "answer_source": (result.get("answer_source") or "record fields" if (result.get("estimate") or {}).get("field_query") or result.get("answer_source") else
+                                           "estimate" if result.get("estimate") else "llm") if result else "",
                          "interval_covered": cov["covered"], "interval_targets": cov["targets"],
                          "estimate": json.dumps(result.get("estimate"), default=str) if result and result.get("estimate") else "",
                          "gold": json.dumps(q["answer"], ensure_ascii=False), "exact_match": em, "set_f1": f1,
@@ -288,11 +506,6 @@ def run_answers(zip_path, extract_dir, output, tier="L", methods=("rag_topk", "l
                          "cache_write_tokens": usage.get("cache_write_tokens", 0),
                          "llm_calls": usage.get("calls", 0), "latency_s": time.perf_counter() - t0, "error": err,
                          "usage_by_role": json.dumps(usage.get("by_role", {})) if usage.get("by_role") else ""})
-    out = Path(output); out.mkdir(parents=True, exist_ok=True)
-    df = pd.DataFrame(rows)
-    df.to_csv(out / "answers.csv", index=False)
-    meta = {"tier": tier, "methods": list(methods), "llm_provider": type(llm).__name__,
-            "llm_model": getattr(llm, "model", None), "llm_effort": getattr(llm, "effort", None), "top_k": top_k,
-            "questions": len(gold), "domain": dom.name}
-    (out / "answers_config.json").write_text(json.dumps(meta, indent=2), encoding="utf-8")
-    return df
+            # Checkpoint: append this answer now, so an interrupted run loses at most one question.
+            pd.DataFrame(rows[-1:]).to_csv(path, mode="a", header=not path.exists(), index=False)
+    return pd.read_csv(path)

@@ -27,8 +27,32 @@ def validate_evidence_records(records):
         if missing or not span:
             rejected.append({"index": i, "reason": f"missing fields: {sorted(missing)}"})
             continue
-        valid.append(dict(record))
+        valid.append(normalize_units(dict(record)))
     return valid, rejected
+
+
+_WORKING_DAYS = re.compile(r"(\d+(?:\.\d+)?)\s+working\s+days?\b", re.I)
+
+
+def normalize_units(record):
+    """Put a value in the unit its attribute names. A table column headed '(weeks)' can hold
+    '10 working days'; read as 10 weeks, that is five times too long. A working week is 5 days."""
+    attr = str(record.get("attribute") or "").lower()
+    if "week" not in attr:
+        return record
+    for text in (str(record.get("value")), str(record.get("evidence_span") or "")):
+        m = _WORKING_DAYS.search(text)
+        if m:
+            try:
+                same = float(m.group(1)) == float(str(record.get("value")).split()[0])
+            except ValueError:
+                same = "working day" in str(record.get("value")).lower()
+            if same:
+                weeks = float(m.group(1)) / 5
+                record["value"] = int(weeks) if weeks.is_integer() else round(weeks, 2)
+                record["unit_note"] = f"{m.group(0)} converted to weeks (5 working days a week)"
+            break
+    return record
 
 
 def _status(r):

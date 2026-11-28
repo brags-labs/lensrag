@@ -1,0 +1,1598 @@
+[
+ {
+  "kind": "version_change",
+  "scope": "GLOBAL",
+  "documents": [
+   "POL-v1.0-CH02",
+   "POL-v2.0-CH02",
+   "POL-v3.0-CH02"
+  ],
+  "sources": [
+   {
+    "doc_id": "POL-v1.0-CH02",
+    "version": "1.0",
+    "status": "superseded",
+    "effective_date": "2022-04-01",
+    "attribute": "Hybrid — Minimum office presence",
+    "value": "2 days a week, including team anchor days",
+    "evidence_span": "| Hybrid | A mix of Company office and home workplace | 2 days a week, including team anchor days | Most engineering, product, design, delivery, HR, finance and sales roles |"
+   },
+   {
+    "doc_id": "POL-v2.0-CH02",
+    "version": "2.0",
+    "status": "superseded",
+    "effective_date": "2024-01-01",
+    "attribute": "Hybrid — Minimum office presence",
+    "value": "2 days a week, including team anchor days",
+    "evidence_span": "| Hybrid | A mix of Company office and home workplace | 2 days a week, including team anchor days | Most engineering, product, design, delivery, HR, finance and sales roles |"
+   },
+   {
+    "doc_id": "POL-v3.0-CH02",
+    "version": "3.0",
+    "status": "current",
+    "effective_date": "2026-11-01",
+    "attribute": "Hybrid — Minimum office presence",
+    "value": "3 days a week, including team anchor days",
+    "evidence_span": "| Hybrid | A mix of Company office and home workplace | 3 days a week, including team anchor days | Most engineering, product, design, delivery, HR, finance and sales roles |"
+   }
+  ],
+  "applies": {
+   "doc_id": "POL-v3.0-CH02",
+   "version": "3.0",
+   "status": "current",
+   "effective_date": "2026-11-01",
+   "attribute": "Hybrid — Minimum office presence",
+   "value": "3 days a week, including team anchor days",
+   "evidence_span": "| Hybrid | A mix of Company office and home workplace | 3 days a week, including team anchor days | Most engineering, product, design, delivery, HR, finance and sales roles |"
+  }
+ },
+ {
+  "kind": "version_change",
+  "scope": "GLOBAL",
+  "documents": [
+   "POL-v1.0-CH09",
+   "POL-v2.0-CH09",
+   "POL-v3.0-CH09"
+  ],
+  "sources": [
+   {
+    "doc_id": "POL-v1.0-CH09",
+    "version": "1.0",
+    "status": "superseded",
+    "effective_date": "2022-04-01",
+    "attribute": "Minimum office days",
+    "value": "2 days a week, averaged over each calendar month (8 days in a month with 20 working days)",
+    "evidence_span": "| Minimum office days | 2 days a week, averaged over each calendar month (8 days in a month with 20 working days) |"
+   },
+   {
+    "doc_id": "POL-v2.0-CH09",
+    "version": "2.0",
+    "status": "superseded",
+    "effective_date": "2024-01-01",
+    "attribute": "Minimum office days",
+    "value": "2 days a week, averaged over each calendar month (8 days in a month with 20 working days)",
+    "evidence_span": "| Minimum office days | 2 days a week, averaged over each calendar month (8 days in a month with 20 working days) |"
+   },
+   {
+    "doc_id": "POL-v3.0-CH09",
+    "version": "3.0",
+    "status": "current",
+    "effective_date": "2026-11-01",
+    "attribute": "Minimum office days",
+    "value": "3 days a week, averaged over each calendar month (12 days in a month with 20 working days)",
+    "evidence_span": "| Minimum office days | 3 days a week, averaged over each calendar month (12 days in a month with 20 working days) |"
+   }
+  ],
+  "applies": {
+   "doc_id": "POL-v3.0-CH09",
+   "version": "3.0",
+   "status": "current",
+   "effective_date": "2026-11-01",
+   "attribute": "Minimum office days",
+   "value": "3 days a week, averaged over each calendar month (12 days in a month with 20 working days)",
+   "evidence_span": "| Minimum office days | 3 days a week, averaged over each calendar month (12 days in a month with 20 working days) |"
+  }
+ },
+ {
+  "kind": "version_change",
+  "scope": "GLOBAL",
+  "documents": [
+   "POL-v1.0-CH12",
+   "POL-v2.0-CH12",
+   "POL-v3.0-CH12"
+  ],
+  "sources": [
+   {
+    "doc_id": "POL-v1.0-CH12",
+    "version": "1.0",
+    "status": "superseded",
+    "effective_date": "2022-04-01",
+    "attribute": "Afternoon",
+    "value": "₹150",
+    "evidence_span": "| Afternoon | ₹150 |"
+   },
+   {
+    "doc_id": "POL-v2.0-CH12",
+    "version": "2.0",
+    "status": "superseded",
+    "effective_date": "2024-01-01",
+    "attribute": "Afternoon",
+    "value": "₹200",
+    "evidence_span": "| Afternoon | ₹200 |"
+   },
+   {
+    "doc_id": "POL-v3.0-CH12",
+    "version": "3.0",
+    "status": "current",
+    "effective_date": "2026-11-01",
+    "attribute": "Afternoon",
+    "value": "₹250",
+    "evidence_span": "| Afternoon | ₹250 |"
+   }
+  ],
+  "applies": {
+   "doc_id": "POL-v3.0-CH12",
+   "version": "3.0",
+   "status": "current",
+   "effective_date": "2026-11-01",
+   "attribute": "Afternoon",
+   "value": "₹250",
+   "evidence_span": "| Afternoon | ₹250 |"
+  }
+ },
+ {
+  "kind": "version_change",
+  "scope": "GLOBAL",
+  "documents": [
+   "POL-v1.0-CH12",
+   "POL-v2.0-CH12",
+   "POL-v3.0-CH12"
+  ],
+  "sources": [
+   {
+    "doc_id": "POL-v1.0-CH12",
+    "version": "1.0",
+    "status": "superseded",
+    "effective_date": "2022-04-01",
+    "attribute": "Late",
+    "value": "₹250",
+    "evidence_span": "| Late | ₹250 |"
+   },
+   {
+    "doc_id": "POL-v2.0-CH12",
+    "version": "2.0",
+    "status": "superseded",
+    "effective_date": "2024-01-01",
+    "attribute": "Late",
+    "value": "₹300",
+    "evidence_span": "| Late | ₹300 |"
+   },
+   {
+    "doc_id": "POL-v3.0-CH12",
+    "version": "3.0",
+    "status": "current",
+    "effective_date": "2026-11-01",
+    "attribute": "Late",
+    "value": "₹400",
+    "evidence_span": "| Late | ₹400 |"
+   }
+  ],
+  "applies": {
+   "doc_id": "POL-v3.0-CH12",
+   "version": "3.0",
+   "status": "current",
+   "effective_date": "2026-11-01",
+   "attribute": "Late",
+   "value": "₹400",
+   "evidence_span": "| Late | ₹400 |"
+  }
+ },
+ {
+  "kind": "version_change",
+  "scope": "GLOBAL",
+  "documents": [
+   "POL-v1.0-CH12",
+   "POL-v2.0-CH12",
+   "POL-v3.0-CH12"
+  ],
+  "sources": [
+   {
+    "doc_id": "POL-v1.0-CH12",
+    "version": "1.0",
+    "status": "superseded",
+    "effective_date": "2022-04-01",
+    "attribute": "Night",
+    "value": "₹400",
+    "evidence_span": "| Night | ₹400 |"
+   },
+   {
+    "doc_id": "POL-v2.0-CH12",
+    "version": "2.0",
+    "status": "superseded",
+    "effective_date": "2024-01-01",
+    "attribute": "Night",
+    "value": "₹500",
+    "evidence_span": "| Night | ₹500 |"
+   },
+   {
+    "doc_id": "POL-v3.0-CH12",
+    "version": "3.0",
+    "status": "current",
+    "effective_date": "2026-11-01",
+    "attribute": "Night",
+    "value": "₹600",
+    "evidence_span": "| Night | ₹600 |"
+   }
+  ],
+  "applies": {
+   "doc_id": "POL-v3.0-CH12",
+   "version": "3.0",
+   "status": "current",
+   "effective_date": "2026-11-01",
+   "attribute": "Night",
+   "value": "₹600",
+   "evidence_span": "| Night | ₹600 |"
+  }
+ },
+ {
+  "kind": "version_change",
+  "scope": "GLOBAL",
+  "documents": [
+   "POL-v1.0-CH14",
+   "POL-v2.0-CH14",
+   "POL-v3.0-CH14"
+  ],
+  "sources": [
+   {
+    "doc_id": "POL-v1.0-CH14",
+    "version": "1.0",
+    "status": "superseded",
+    "effective_date": "2022-04-01",
+    "attribute": "One-time home office setup allowance — Hybrid",
+    "value": "₹6,000",
+    "evidence_span": "| One-time home office setup allowance | No | ₹6,000 | ₹15,000 | No |"
+   },
+   {
+    "doc_id": "POL-v2.0-CH14",
+    "version": "2.0",
+    "status": "superseded",
+    "effective_date": "2024-01-01",
+    "attribute": "One-time home office setup allowance — Hybrid",
+    "value": "₹8,000",
+    "evidence_span": "| One-time home office setup allowance | No | ₹8,000 | ₹20,000 | No |"
+   },
+   {
+    "doc_id": "POL-v3.0-CH14",
+    "version": "3.0",
+    "status": "current",
+    "effective_date": "2026-11-01",
+    "attribute": "One-time home office setup allowance — Hybrid",
+    "value": "₹10,000",
+    "evidence_span": "| One-time home office setup allowance | No | ₹10,000 | ₹25,000 | No |"
+   }
+  ],
+  "applies": {
+   "doc_id": "POL-v3.0-CH14",
+   "version": "3.0",
+   "status": "current",
+   "effective_date": "2026-11-01",
+   "attribute": "One-time home office setup allowance — Hybrid",
+   "value": "₹10,000",
+   "evidence_span": "| One-time home office setup allowance | No | ₹10,000 | ₹25,000 | No |"
+  }
+ },
+ {
+  "kind": "version_change",
+  "scope": "GLOBAL",
+  "documents": [
+   "POL-v1.0-CH14",
+   "POL-v2.0-CH14",
+   "POL-v3.0-CH14"
+  ],
+  "sources": [
+   {
+    "doc_id": "POL-v1.0-CH14",
+    "version": "1.0",
+    "status": "superseded",
+    "effective_date": "2022-04-01",
+    "attribute": "One-time home office setup allowance — Remote",
+    "value": "₹15,000",
+    "evidence_span": "| One-time home office setup allowance | No | ₹6,000 | ₹15,000 | No |"
+   },
+   {
+    "doc_id": "POL-v2.0-CH14",
+    "version": "2.0",
+    "status": "superseded",
+    "effective_date": "2024-01-01",
+    "attribute": "One-time home office setup allowance — Remote",
+    "value": "₹20,000",
+    "evidence_span": "| One-time home office setup allowance | No | ₹8,000 | ₹20,000 | No |"
+   },
+   {
+    "doc_id": "POL-v3.0-CH14",
+    "version": "3.0",
+    "status": "current",
+    "effective_date": "2026-11-01",
+    "attribute": "One-time home office setup allowance — Remote",
+    "value": "₹25,000",
+    "evidence_span": "| One-time home office setup allowance | No | ₹10,000 | ₹25,000 | No |"
+   }
+  ],
+  "applies": {
+   "doc_id": "POL-v3.0-CH14",
+   "version": "3.0",
+   "status": "current",
+   "effective_date": "2026-11-01",
+   "attribute": "One-time home office setup allowance — Remote",
+   "value": "₹25,000",
+   "evidence_span": "| One-time home office setup allowance | No | ₹10,000 | ₹25,000 | No |"
+  }
+ },
+ {
+  "kind": "version_change",
+  "scope": "GLOBAL",
+  "documents": [
+   "POL-v1.0-CH14",
+   "POL-v2.0-CH14",
+   "POL-v3.0-CH14"
+  ],
+  "sources": [
+   {
+    "doc_id": "POL-v1.0-CH14",
+    "version": "1.0",
+    "status": "superseded",
+    "effective_date": "2022-04-01",
+    "attribute": "Monthly internet and phone allowance — Hybrid",
+    "value": "₹600",
+    "evidence_span": "| Monthly internet and phone allowance | No | ₹600 | ₹1,000 | ₹1,000 if client site requires hotspot |"
+   },
+   {
+    "doc_id": "POL-v2.0-CH14",
+    "version": "2.0",
+    "status": "superseded",
+    "effective_date": "2024-01-01",
+    "attribute": "Monthly internet and phone allowance — Hybrid",
+    "value": "₹800",
+    "evidence_span": "| Monthly internet and phone allowance | No | ₹800 | ₹1,200 | ₹1,000 if client site requires hotspot |"
+   },
+   {
+    "doc_id": "POL-v3.0-CH14",
+    "version": "3.0",
+    "status": "current",
+    "effective_date": "2026-11-01",
+    "attribute": "Monthly internet and phone allowance — Hybrid",
+    "value": "₹1,000",
+    "evidence_span": "| Monthly internet and phone allowance | No | ₹1,000 | ₹1,500 | ₹1,000 if client site requires hotspot |"
+   }
+  ],
+  "applies": {
+   "doc_id": "POL-v3.0-CH14",
+   "version": "3.0",
+   "status": "current",
+   "effective_date": "2026-11-01",
+   "attribute": "Monthly internet and phone allowance — Hybrid",
+   "value": "₹1,000",
+   "evidence_span": "| Monthly internet and phone allowance | No | ₹1,000 | ₹1,500 | ₹1,000 if client site requires hotspot |"
+  }
+ },
+ {
+  "kind": "version_change",
+  "scope": "GLOBAL",
+  "documents": [
+   "POL-v1.0-CH14",
+   "POL-v2.0-CH14",
+   "POL-v3.0-CH14"
+  ],
+  "sources": [
+   {
+    "doc_id": "POL-v1.0-CH14",
+    "version": "1.0",
+    "status": "superseded",
+    "effective_date": "2022-04-01",
+    "attribute": "Monthly internet and phone allowance — Remote",
+    "value": "₹1,000",
+    "evidence_span": "| Monthly internet and phone allowance | No | ₹600 | ₹1,000 | ₹1,000 if client site requires hotspot |"
+   },
+   {
+    "doc_id": "POL-v2.0-CH14",
+    "version": "2.0",
+    "status": "superseded",
+    "effective_date": "2024-01-01",
+    "attribute": "Monthly internet and phone allowance — Remote",
+    "value": "₹1,200",
+    "evidence_span": "| Monthly internet and phone allowance | No | ₹800 | ₹1,200 | ₹1,000 if client site requires hotspot |"
+   },
+   {
+    "doc_id": "POL-v3.0-CH14",
+    "version": "3.0",
+    "status": "current",
+    "effective_date": "2026-11-01",
+    "attribute": "Monthly internet and phone allowance — Remote",
+    "value": "₹1,500",
+    "evidence_span": "| Monthly internet and phone allowance | No | ₹1,000 | ₹1,500 | ₹1,000 if client site requires hotspot |"
+   }
+  ],
+  "applies": {
+   "doc_id": "POL-v3.0-CH14",
+   "version": "3.0",
+   "status": "current",
+   "effective_date": "2026-11-01",
+   "attribute": "Monthly internet and phone allowance — Remote",
+   "value": "₹1,500",
+   "evidence_span": "| Monthly internet and phone allowance | No | ₹1,000 | ₹1,500 | ₹1,000 if client site requires hotspot |"
+  }
+ },
+ {
+  "kind": "version_change",
+  "scope": "GLOBAL",
+  "documents": [
+   "POL-v1.0-CH15",
+   "POL-v2.0-CH15",
+   "POL-v3.0-CH15"
+  ],
+  "sources": [
+   {
+    "doc_id": "POL-v1.0-CH15",
+    "version": "1.0",
+    "status": "superseded",
+    "effective_date": "2022-04-01",
+    "attribute": "Earned / privilege leave (EL) — Days per year",
+    "value": "15",
+    "evidence_span": "| Earned / privilege leave (EL) | 15 | 1.25 days per month | Up to 45 days | At separation; and up to 10 days a year on request |"
+   },
+   {
+    "doc_id": "POL-v2.0-CH15",
+    "version": "2.0",
+    "status": "superseded",
+    "effective_date": "2024-01-01",
+    "attribute": "Earned / privilege leave (EL) — Days per year",
+    "value": "18",
+    "evidence_span": "| Earned / privilege leave (EL) | 18 | 1.5 days per month | Up to 45 days | At separation; and up to 10 days a year on request |"
+   },
+   {
+    "doc_id": "POL-v3.0-CH15",
+    "version": "3.0",
+    "status": "current",
+    "effective_date": "2026-11-01",
+    "attribute": "Earned / privilege leave (EL) — Days per year",
+    "value": "18",
+    "evidence_span": "| Earned / privilege leave (EL) | 18 | 1.5 days per month | Up to 45 days | At separation; and up to 10 days a year on request |"
+   }
+  ],
+  "applies": {
+   "doc_id": "POL-v3.0-CH15",
+   "version": "3.0",
+   "status": "current",
+   "effective_date": "2026-11-01",
+   "attribute": "Earned / privilege leave (EL) — Days per year",
+   "value": "18",
+   "evidence_span": "| Earned / privilege leave (EL) | 18 | 1.5 days per month | Up to 45 days | At separation; and up to 10 days a year on request |"
+  }
+ },
+ {
+  "kind": "version_change",
+  "scope": "GLOBAL",
+  "documents": [
+   "POL-v1.0-CH15",
+   "POL-v2.0-CH15",
+   "POL-v3.0-CH15"
+  ],
+  "sources": [
+   {
+    "doc_id": "POL-v1.0-CH15",
+    "version": "1.0",
+    "status": "superseded",
+    "effective_date": "2022-04-01",
+    "attribute": "Sick leave (SL) — Days per year",
+    "value": "7",
+    "evidence_span": "| Sick leave (SL) | 7 | Credited on 1 January (pro rata for joiners) | Up to 24 days | No |"
+   },
+   {
+    "doc_id": "POL-v2.0-CH15",
+    "version": "2.0",
+    "status": "superseded",
+    "effective_date": "2024-01-01",
+    "attribute": "Sick leave (SL) — Days per year",
+    "value": "8",
+    "evidence_span": "| Sick leave (SL) | 8 | Credited on 1 January (pro rata for joiners) | Up to 24 days | No |"
+   },
+   {
+    "doc_id": "POL-v3.0-CH15",
+    "version": "3.0",
+    "status": "current",
+    "effective_date": "2026-11-01",
+    "attribute": "Sick leave (SL) — Days per year",
+    "value": "8",
+    "evidence_span": "| Sick leave (SL) | 8 | Credited on 1 January (pro rata for joiners) | Up to 24 days | No |"
+   }
+  ],
+  "applies": {
+   "doc_id": "POL-v3.0-CH15",
+   "version": "3.0",
+   "status": "current",
+   "effective_date": "2026-11-01",
+   "attribute": "Sick leave (SL) — Days per year",
+   "value": "8",
+   "evidence_span": "| Sick leave (SL) | 8 | Credited on 1 January (pro rata for joiners) | Up to 24 days | No |"
+  }
+ },
+ {
+  "kind": "version_change",
+  "scope": "GLOBAL",
+  "documents": [
+   "POL-v1.0-CH19",
+   "POL-v2.0-CH19",
+   "POL-v3.0-CH19"
+  ],
+  "sources": [
+   {
+    "doc_id": "POL-v1.0-CH19",
+    "version": "1.0",
+    "status": "superseded",
+    "effective_date": "2022-04-01",
+    "attribute": "Sum insured",
+    "value": "₹3,00,000 per family per year (floater)",
+    "evidence_span": "| Sum insured | ₹3,00,000 per family per year (floater) |"
+   },
+   {
+    "doc_id": "POL-v2.0-CH19",
+    "version": "2.0",
+    "status": "superseded",
+    "effective_date": "2024-01-01",
+    "attribute": "Sum insured",
+    "value": "₹4,00,000 per family per year (floater)",
+    "evidence_span": "| Sum insured | ₹4,00,000 per family per year (floater) |"
+   },
+   {
+    "doc_id": "POL-v3.0-CH19",
+    "version": "3.0",
+    "status": "current",
+    "effective_date": "2026-11-01",
+    "attribute": "Sum insured",
+    "value": "₹5,00,000 per family per year (floater)",
+    "evidence_span": "| Sum insured | ₹5,00,000 per family per year (floater) |"
+   }
+  ],
+  "applies": {
+   "doc_id": "POL-v3.0-CH19",
+   "version": "3.0",
+   "status": "current",
+   "effective_date": "2026-11-01",
+   "attribute": "Sum insured",
+   "value": "₹5,00,000 per family per year (floater)",
+   "evidence_span": "| Sum insured | ₹5,00,000 per family per year (floater) |"
+  }
+ },
+ {
+  "kind": "version_change",
+  "scope": "GLOBAL",
+  "documents": [
+   "POL-v1.0-CH24",
+   "POL-v2.0-CH24",
+   "POL-v3.0-CH24"
+  ],
+  "sources": [
+   {
+    "doc_id": "POL-v1.0-CH24",
+    "version": "1.0",
+    "status": "superseded",
+    "effective_date": "2022-04-01",
+    "attribute": "L1–L3 — Annual learning budget",
+    "value": "₹15,000",
+    "evidence_span": "| L1–L3 | ₹15,000 | 40 hours |"
+   },
+   {
+    "doc_id": "POL-v2.0-CH24",
+    "version": "2.0",
+    "status": "superseded",
+    "effective_date": "2024-01-01",
+    "attribute": "L1–L3 — Annual learning budget",
+    "value": "₹20,000",
+    "evidence_span": "| L1–L3 | ₹20,000 | 40 hours |"
+   },
+   {
+    "doc_id": "POL-v3.0-CH24",
+    "version": "3.0",
+    "status": "current",
+    "effective_date": "2026-11-01",
+    "attribute": "L1–L3 — Annual learning budget",
+    "value": "₹25,000",
+    "evidence_span": "| L1–L3 | ₹25,000 | 40 hours |"
+   }
+  ],
+  "applies": {
+   "doc_id": "POL-v3.0-CH24",
+   "version": "3.0",
+   "status": "current",
+   "effective_date": "2026-11-01",
+   "attribute": "L1–L3 — Annual learning budget",
+   "value": "₹25,000",
+   "evidence_span": "| L1–L3 | ₹25,000 | 40 hours |"
+  }
+ },
+ {
+  "kind": "version_change",
+  "scope": "GLOBAL",
+  "documents": [
+   "POL-v1.0-CH24",
+   "POL-v2.0-CH24",
+   "POL-v3.0-CH24"
+  ],
+  "sources": [
+   {
+    "doc_id": "POL-v1.0-CH24",
+    "version": "1.0",
+    "status": "superseded",
+    "effective_date": "2022-04-01",
+    "attribute": "L4–L6 — Annual learning budget",
+    "value": "₹25,000",
+    "evidence_span": "| L4–L6 | ₹25,000 | 40 hours |"
+   },
+   {
+    "doc_id": "POL-v2.0-CH24",
+    "version": "2.0",
+    "status": "superseded",
+    "effective_date": "2024-01-01",
+    "attribute": "L4–L6 — Annual learning budget",
+    "value": "₹30,000",
+    "evidence_span": "| L4–L6 | ₹30,000 | 40 hours |"
+   },
+   {
+    "doc_id": "POL-v3.0-CH24",
+    "version": "3.0",
+    "status": "current",
+    "effective_date": "2026-11-01",
+    "attribute": "L4–L6 — Annual learning budget",
+    "value": "₹40,000",
+    "evidence_span": "| L4–L6 | ₹40,000 | 40 hours |"
+   }
+  ],
+  "applies": {
+   "doc_id": "POL-v3.0-CH24",
+   "version": "3.0",
+   "status": "current",
+   "effective_date": "2026-11-01",
+   "attribute": "L4–L6 — Annual learning budget",
+   "value": "₹40,000",
+   "evidence_span": "| L4–L6 | ₹40,000 | 40 hours |"
+  }
+ },
+ {
+  "kind": "version_change",
+  "scope": "GLOBAL",
+  "documents": [
+   "POL-v1.0-CH24",
+   "POL-v2.0-CH24",
+   "POL-v3.0-CH24"
+  ],
+  "sources": [
+   {
+    "doc_id": "POL-v1.0-CH24",
+    "version": "1.0",
+    "status": "superseded",
+    "effective_date": "2022-04-01",
+    "attribute": "L7 and above — Annual learning budget",
+    "value": "₹50,000",
+    "evidence_span": "| L7 and above | ₹50,000 | 30 hours, plus leadership programmes |"
+   },
+   {
+    "doc_id": "POL-v2.0-CH24",
+    "version": "2.0",
+    "status": "superseded",
+    "effective_date": "2024-01-01",
+    "attribute": "L7 and above — Annual learning budget",
+    "value": "₹60,000",
+    "evidence_span": "| L7 and above | ₹60,000 | 30 hours, plus leadership programmes |"
+   },
+   {
+    "doc_id": "POL-v3.0-CH24",
+    "version": "3.0",
+    "status": "current",
+    "effective_date": "2026-11-01",
+    "attribute": "L7 and above — Annual learning budget",
+    "value": "₹75,000",
+    "evidence_span": "| L7 and above | ₹75,000 | 30 hours, plus leadership programmes |"
+   }
+  ],
+  "applies": {
+   "doc_id": "POL-v3.0-CH24",
+   "version": "3.0",
+   "status": "current",
+   "effective_date": "2026-11-01",
+   "attribute": "L7 and above — Annual learning budget",
+   "value": "₹75,000",
+   "evidence_span": "| L7 and above | ₹75,000 | 30 hours, plus leadership programmes |"
+  }
+ },
+ {
+  "kind": "version_change",
+  "scope": "US",
+  "documents": [
+   "POL-v2.0-CH38",
+   "POL-v3.0-CH38"
+  ],
+  "sources": [
+   {
+    "doc_id": "POL-v2.0-CH38",
+    "version": "2.0",
+    "status": "superseded",
+    "effective_date": "2024-01-01",
+    "attribute": "Paid time off (vacation and personal)",
+    "value": "18 days a year, accruing per pay period; carry-over up to 5 days, or as state law requires; accrued unused PTO paid out at separation where state law requires",
+    "evidence_span": "| Paid time off (vacation and personal) | 18 days a year, accruing per pay period; carry-over up to 5 days, or as state law requires; accrued unused PTO paid out at separation where state law requires |"
+   },
+   {
+    "doc_id": "POL-v3.0-CH38",
+    "version": "3.0",
+    "status": "current",
+    "effective_date": "2026-11-01",
+    "attribute": "Paid time off (vacation and personal)",
+    "value": "20 days a year, accruing per pay period; carry-over up to 5 days, or as state law requires; accrued unused PTO paid out at separation where state law requires",
+    "evidence_span": "| Paid time off (vacation and personal) | 20 days a year, accruing per pay period; carry-over up to 5 days, or as state law requires; accrued unused PTO paid out at separation where state law requires |"
+   }
+  ],
+  "applies": {
+   "doc_id": "POL-v3.0-CH38",
+   "version": "3.0",
+   "status": "current",
+   "effective_date": "2026-11-01",
+   "attribute": "Paid time off (vacation and personal)",
+   "value": "20 days a year, accruing per pay period; carry-over up to 5 days, or as state law requires; accrued unused PTO paid out at separation where state law requires",
+   "evidence_span": "| Paid time off (vacation and personal) | 20 days a year, accruing per pay period; carry-over up to 5 days, or as state law requires; accrued unused PTO paid out at separation where state law requires |"
+  }
+ },
+ {
+  "kind": "version_change",
+  "scope": "US",
+  "documents": [
+   "POL-v2.0-CH38",
+   "POL-v3.0-CH38"
+  ],
+  "sources": [
+   {
+    "doc_id": "POL-v2.0-CH38",
+    "version": "2.0",
+    "status": "superseded",
+    "effective_date": "2024-01-01",
+    "attribute": "Paid sick leave",
+    "value": "8 days a year, usable for own or family illness, preventive care and safe leave; more where state or city law requires",
+    "evidence_span": "| Paid sick leave | 8 days a year, usable for own or family illness, preventive care and safe leave; more where state or city law requires |"
+   },
+   {
+    "doc_id": "POL-v3.0-CH38",
+    "version": "3.0",
+    "status": "current",
+    "effective_date": "2026-11-01",
+    "attribute": "Paid sick leave",
+    "value": "10 days a year, usable for own or family illness, preventive care and safe leave; more where state or city law requires",
+    "evidence_span": "| Paid sick leave | 10 days a year, usable for own or family illness, preventive care and safe leave; more where state or city law requires |"
+   }
+  ],
+  "applies": {
+   "doc_id": "POL-v3.0-CH38",
+   "version": "3.0",
+   "status": "current",
+   "effective_date": "2026-11-01",
+   "attribute": "Paid sick leave",
+   "value": "10 days a year, usable for own or family illness, preventive care and safe leave; more where state or city law requires",
+   "evidence_span": "| Paid sick leave | 10 days a year, usable for own or family illness, preventive care and safe leave; more where state or city law requires |"
+  }
+ },
+ {
+  "kind": "version_change",
+  "scope": "US",
+  "documents": [
+   "POL-v2.0-CH38",
+   "POL-v3.0-CH38"
+  ],
+  "sources": [
+   {
+    "doc_id": "POL-v2.0-CH38",
+    "version": "2.0",
+    "status": "superseded",
+    "effective_date": "2024-01-01",
+    "attribute": "Paid annual leave (working days)",
+    "value": "18",
+    "evidence_span": "| Paid annual leave (working days) | 18 |"
+   },
+   {
+    "doc_id": "POL-v3.0-CH38",
+    "version": "3.0",
+    "status": "current",
+    "effective_date": "2026-11-01",
+    "attribute": "Paid annual leave (working days)",
+    "value": "20",
+    "evidence_span": "| Paid annual leave (working days) | 20 |"
+   }
+  ],
+  "applies": {
+   "doc_id": "POL-v3.0-CH38",
+   "version": "3.0",
+   "status": "current",
+   "effective_date": "2026-11-01",
+   "attribute": "Paid annual leave (working days)",
+   "value": "20",
+   "evidence_span": "| Paid annual leave (working days) | 20 |"
+  }
+ },
+ {
+  "kind": "version_change",
+  "scope": "US",
+  "documents": [
+   "POL-v2.0-CH38",
+   "POL-v3.0-CH38"
+  ],
+  "sources": [
+   {
+    "doc_id": "POL-v2.0-CH38",
+    "version": "2.0",
+    "status": "superseded",
+    "effective_date": "2024-01-01",
+    "attribute": "Paid sick leave at full pay (working days)",
+    "value": "8",
+    "evidence_span": "| Paid sick leave at full pay (working days) | 8 |"
+   },
+   {
+    "doc_id": "POL-v3.0-CH38",
+    "version": "3.0",
+    "status": "current",
+    "effective_date": "2026-11-01",
+    "attribute": "Paid sick leave at full pay (working days)",
+    "value": "10",
+    "evidence_span": "| Paid sick leave at full pay (working days) | 10 |"
+   }
+  ],
+  "applies": {
+   "doc_id": "POL-v3.0-CH38",
+   "version": "3.0",
+   "status": "current",
+   "effective_date": "2026-11-01",
+   "attribute": "Paid sick leave at full pay (working days)",
+   "value": "10",
+   "evidence_span": "| Paid sick leave at full pay (working days) | 10 |"
+  }
+ },
+ {
+  "kind": "version_change",
+  "scope": "US",
+  "documents": [
+   "POL-v2.0-CH38",
+   "POL-v3.0-CH38"
+  ],
+  "sources": [
+   {
+    "doc_id": "POL-v2.0-CH38",
+    "version": "2.0",
+    "status": "superseded",
+    "effective_date": "2024-01-01",
+    "attribute": "Birth-parent leave at full pay (weeks)",
+    "value": "14",
+    "evidence_span": "| Birth-parent leave at full pay (weeks) | 14 |"
+   },
+   {
+    "doc_id": "POL-v3.0-CH38",
+    "version": "3.0",
+    "status": "current",
+    "effective_date": "2026-11-01",
+    "attribute": "Birth-parent leave at full pay (weeks)",
+    "value": "16",
+    "evidence_span": "| Birth-parent leave at full pay (weeks) | 16 |"
+   }
+  ],
+  "applies": {
+   "doc_id": "POL-v3.0-CH38",
+   "version": "3.0",
+   "status": "current",
+   "effective_date": "2026-11-01",
+   "attribute": "Birth-parent leave at full pay (weeks)",
+   "value": "16",
+   "evidence_span": "| Birth-parent leave at full pay (weeks) | 16 |"
+  }
+ },
+ {
+  "kind": "version_change",
+  "scope": "US",
+  "documents": [
+   "POL-v2.0-CH38",
+   "POL-v3.0-CH38"
+  ],
+  "sources": [
+   {
+    "doc_id": "POL-v2.0-CH38",
+    "version": "2.0",
+    "status": "superseded",
+    "effective_date": "2024-01-01",
+    "attribute": "Partner / non-birth-parent leave at full pay (weeks)",
+    "value": "6",
+    "evidence_span": "| Partner / non-birth-parent leave at full pay (weeks) | 6 |"
+   },
+   {
+    "doc_id": "POL-v3.0-CH38",
+    "version": "3.0",
+    "status": "current",
+    "effective_date": "2026-11-01",
+    "attribute": "Partner / non-birth-parent leave at full pay (weeks)",
+    "value": "8",
+    "evidence_span": "| Partner / non-birth-parent leave at full pay (weeks) | 8 |"
+   }
+  ],
+  "applies": {
+   "doc_id": "POL-v3.0-CH38",
+   "version": "3.0",
+   "status": "current",
+   "effective_date": "2026-11-01",
+   "attribute": "Partner / non-birth-parent leave at full pay (weeks)",
+   "value": "8",
+   "evidence_span": "| Partner / non-birth-parent leave at full pay (weeks) | 8 |"
+  }
+ },
+ {
+  "kind": "version_change",
+  "scope": "US",
+  "documents": [
+   "POL-v2.0-CH38",
+   "POL-v3.0-CH38"
+  ],
+  "sources": [
+   {
+    "doc_id": "POL-v2.0-CH38",
+    "version": "2.0",
+    "status": "superseded",
+    "effective_date": "2024-01-01",
+    "attribute": "Employer retirement contribution (% of pay)",
+    "value": "4",
+    "evidence_span": "| Employer retirement contribution (% of pay) | 4 |"
+   },
+   {
+    "doc_id": "POL-v3.0-CH38",
+    "version": "3.0",
+    "status": "current",
+    "effective_date": "2026-11-01",
+    "attribute": "Employer retirement contribution (% of pay)",
+    "value": "5",
+    "evidence_span": "| Employer retirement contribution (% of pay) | 5 |"
+   }
+  ],
+  "applies": {
+   "doc_id": "POL-v3.0-CH38",
+   "version": "3.0",
+   "status": "current",
+   "effective_date": "2026-11-01",
+   "attribute": "Employer retirement contribution (% of pay)",
+   "value": "5",
+   "evidence_span": "| Employer retirement contribution (% of pay) | 5 |"
+  }
+ },
+ {
+  "kind": "version_change",
+  "scope": "IN",
+  "documents": [
+   "POL-v2.0-CH39",
+   "POL-v3.0-CH39"
+  ],
+  "sources": [
+   {
+    "doc_id": "POL-v2.0-CH39",
+    "version": "2.0",
+    "status": "superseded",
+    "effective_date": "2024-01-01",
+    "attribute": "Partner / non-birth-parent leave at full pay (weeks)",
+    "value": "7 working days",
+    "evidence_span": "| Partner / non-birth-parent leave at full pay (weeks) | 7 working days |"
+   },
+   {
+    "doc_id": "POL-v3.0-CH39",
+    "version": "3.0",
+    "status": "current",
+    "effective_date": "2026-11-01",
+    "attribute": "Partner / non-birth-parent leave at full pay (weeks)",
+    "value": "10 working days",
+    "evidence_span": "| Partner / non-birth-parent leave at full pay (weeks) | 10 working days |"
+   }
+  ],
+  "applies": {
+   "doc_id": "POL-v3.0-CH39",
+   "version": "3.0",
+   "status": "current",
+   "effective_date": "2026-11-01",
+   "attribute": "Partner / non-birth-parent leave at full pay (weeks)",
+   "value": "10 working days",
+   "evidence_span": "| Partner / non-birth-parent leave at full pay (weeks) | 10 working days |"
+  }
+ },
+ {
+  "kind": "version_change",
+  "scope": "UK",
+  "documents": [
+   "POL-v2.0-CH40",
+   "POL-v3.0-CH40"
+  ],
+  "sources": [
+   {
+    "doc_id": "POL-v2.0-CH40",
+    "version": "2.0",
+    "status": "superseded",
+    "effective_date": "2024-01-01",
+    "attribute": "Maternity and adoption — Company enhancement",
+    "value": "14 weeks at full pay, then statutory pay",
+    "evidence_span": "| Maternity and adoption | 52 weeks' leave; 39 weeks' statutory pay | 14 weeks at full pay, then statutory pay |"
+   },
+   {
+    "doc_id": "POL-v3.0-CH40",
+    "version": "3.0",
+    "status": "current",
+    "effective_date": "2026-11-01",
+    "attribute": "Maternity and adoption — Company enhancement",
+    "value": "16 weeks at full pay, then statutory pay",
+    "evidence_span": "| Maternity and adoption | 52 weeks' leave; 39 weeks' statutory pay | 16 weeks at full pay, then statutory pay |"
+   }
+  ],
+  "applies": {
+   "doc_id": "POL-v3.0-CH40",
+   "version": "3.0",
+   "status": "current",
+   "effective_date": "2026-11-01",
+   "attribute": "Maternity and adoption — Company enhancement",
+   "value": "16 weeks at full pay, then statutory pay",
+   "evidence_span": "| Maternity and adoption | 52 weeks' leave; 39 weeks' statutory pay | 16 weeks at full pay, then statutory pay |"
+  }
+ },
+ {
+  "kind": "version_change",
+  "scope": "UK",
+  "documents": [
+   "POL-v2.0-CH40",
+   "POL-v3.0-CH40"
+  ],
+  "sources": [
+   {
+    "doc_id": "POL-v2.0-CH40",
+    "version": "2.0",
+    "status": "superseded",
+    "effective_date": "2024-01-01",
+    "attribute": "Birth-parent leave at full pay (weeks)",
+    "value": "14",
+    "evidence_span": "| Birth-parent leave at full pay (weeks) | 14 |"
+   },
+   {
+    "doc_id": "POL-v3.0-CH40",
+    "version": "3.0",
+    "status": "current",
+    "effective_date": "2026-11-01",
+    "attribute": "Birth-parent leave at full pay (weeks)",
+    "value": "16",
+    "evidence_span": "| Birth-parent leave at full pay (weeks) | 16 |"
+   }
+  ],
+  "applies": {
+   "doc_id": "POL-v3.0-CH40",
+   "version": "3.0",
+   "status": "current",
+   "effective_date": "2026-11-01",
+   "attribute": "Birth-parent leave at full pay (weeks)",
+   "value": "16",
+   "evidence_span": "| Birth-parent leave at full pay (weeks) | 16 |"
+  }
+ },
+ {
+  "kind": "version_change",
+  "scope": "DE",
+  "documents": [
+   "POL-v2.0-CH41",
+   "POL-v3.0-CH41"
+  ],
+  "sources": [
+   {
+    "doc_id": "POL-v2.0-CH41",
+    "version": "2.0",
+    "status": "superseded",
+    "effective_date": "2024-01-01",
+    "attribute": "Paid annual leave (working days)",
+    "value": "27",
+    "evidence_span": "| Paid annual leave (working days) | 27 |"
+   },
+   {
+    "doc_id": "POL-v3.0-CH41",
+    "version": "3.0",
+    "status": "current",
+    "effective_date": "2026-11-01",
+    "attribute": "Paid annual leave (working days)",
+    "value": "28",
+    "evidence_span": "| Paid annual leave (working days) | 28 |"
+   }
+  ],
+  "applies": {
+   "doc_id": "POL-v3.0-CH41",
+   "version": "3.0",
+   "status": "current",
+   "effective_date": "2026-11-01",
+   "attribute": "Paid annual leave (working days)",
+   "value": "28",
+   "evidence_span": "| Paid annual leave (working days) | 28 |"
+  }
+ },
+ {
+  "kind": "version_change",
+  "scope": "DE",
+  "documents": [
+   "POL-v2.0-CH41",
+   "POL-v3.0-CH41"
+  ],
+  "sources": [
+   {
+    "doc_id": "POL-v2.0-CH41",
+    "version": "2.0",
+    "status": "superseded",
+    "effective_date": "2024-01-01",
+    "attribute": "Birth-parent leave at full pay (weeks)",
+    "value": "14",
+    "evidence_span": "| Birth-parent leave at full pay (weeks) | 14 |"
+   },
+   {
+    "doc_id": "POL-v3.0-CH41",
+    "version": "3.0",
+    "status": "current",
+    "effective_date": "2026-11-01",
+    "attribute": "Birth-parent leave at full pay (weeks)",
+    "value": "16",
+    "evidence_span": "| Birth-parent leave at full pay (weeks) | 16 |"
+   }
+  ],
+  "applies": {
+   "doc_id": "POL-v3.0-CH41",
+   "version": "3.0",
+   "status": "current",
+   "effective_date": "2026-11-01",
+   "attribute": "Birth-parent leave at full pay (weeks)",
+   "value": "16",
+   "evidence_span": "| Birth-parent leave at full pay (weeks) | 16 |"
+  }
+ },
+ {
+  "kind": "version_change",
+  "scope": "DE",
+  "documents": [
+   "POL-v2.0-CH41",
+   "POL-v3.0-CH41"
+  ],
+  "sources": [
+   {
+    "doc_id": "POL-v2.0-CH41",
+    "version": "2.0",
+    "status": "superseded",
+    "effective_date": "2024-01-01",
+    "attribute": "Employer retirement contribution (% of pay)",
+    "value": "15",
+    "evidence_span": "| Employer retirement contribution (% of pay) | 15 |"
+   },
+   {
+    "doc_id": "POL-v3.0-CH41",
+    "version": "3.0",
+    "status": "current",
+    "effective_date": "2026-11-01",
+    "attribute": "Employer retirement contribution (% of pay)",
+    "value": "20",
+    "evidence_span": "| Employer retirement contribution (% of pay) | 20 |"
+   }
+  ],
+  "applies": {
+   "doc_id": "POL-v3.0-CH41",
+   "version": "3.0",
+   "status": "current",
+   "effective_date": "2026-11-01",
+   "attribute": "Employer retirement contribution (% of pay)",
+   "value": "20",
+   "evidence_span": "| Employer retirement contribution (% of pay) | 20 |"
+  }
+ },
+ {
+  "kind": "version_change",
+  "scope": "IE",
+  "documents": [
+   "POL-v2.0-CH43",
+   "POL-v3.0-CH43"
+  ],
+  "sources": [
+   {
+    "doc_id": "POL-v2.0-CH43",
+    "version": "2.0",
+    "status": "superseded",
+    "effective_date": "2024-01-01",
+    "attribute": "Paid annual leave (working days)",
+    "value": "23",
+    "evidence_span": "| Paid annual leave (working days) | 23 |"
+   },
+   {
+    "doc_id": "POL-v3.0-CH43",
+    "version": "3.0",
+    "status": "current",
+    "effective_date": "2026-11-01",
+    "attribute": "Paid annual leave (working days)",
+    "value": "25",
+    "evidence_span": "| Paid annual leave (working days) | 25 |"
+   }
+  ],
+  "applies": {
+   "doc_id": "POL-v3.0-CH43",
+   "version": "3.0",
+   "status": "current",
+   "effective_date": "2026-11-01",
+   "attribute": "Paid annual leave (working days)",
+   "value": "25",
+   "evidence_span": "| Paid annual leave (working days) | 25 |"
+  }
+ },
+ {
+  "kind": "version_change",
+  "scope": "IE",
+  "documents": [
+   "POL-v2.0-CH43",
+   "POL-v3.0-CH43"
+  ],
+  "sources": [
+   {
+    "doc_id": "POL-v2.0-CH43",
+    "version": "2.0",
+    "status": "superseded",
+    "effective_date": "2024-01-01",
+    "attribute": "Paid sick leave at full pay (working days)",
+    "value": "5",
+    "evidence_span": "| Paid sick leave at full pay (working days) | 5 |"
+   },
+   {
+    "doc_id": "POL-v3.0-CH43",
+    "version": "3.0",
+    "status": "current",
+    "effective_date": "2026-11-01",
+    "attribute": "Paid sick leave at full pay (working days)",
+    "value": "10",
+    "evidence_span": "| Paid sick leave at full pay (working days) | 10 |"
+   }
+  ],
+  "applies": {
+   "doc_id": "POL-v3.0-CH43",
+   "version": "3.0",
+   "status": "current",
+   "effective_date": "2026-11-01",
+   "attribute": "Paid sick leave at full pay (working days)",
+   "value": "10",
+   "evidence_span": "| Paid sick leave at full pay (working days) | 10 |"
+  }
+ },
+ {
+  "kind": "version_change",
+  "scope": "IE",
+  "documents": [
+   "POL-v2.0-CH43",
+   "POL-v3.0-CH43"
+  ],
+  "sources": [
+   {
+    "doc_id": "POL-v2.0-CH43",
+    "version": "2.0",
+    "status": "superseded",
+    "effective_date": "2024-01-01",
+    "attribute": "Birth-parent leave at full pay (weeks)",
+    "value": "14",
+    "evidence_span": "| Birth-parent leave at full pay (weeks) | 14 |"
+   },
+   {
+    "doc_id": "POL-v3.0-CH43",
+    "version": "3.0",
+    "status": "current",
+    "effective_date": "2026-11-01",
+    "attribute": "Birth-parent leave at full pay (weeks)",
+    "value": "16",
+    "evidence_span": "| Birth-parent leave at full pay (weeks) | 16 |"
+   }
+  ],
+  "applies": {
+   "doc_id": "POL-v3.0-CH43",
+   "version": "3.0",
+   "status": "current",
+   "effective_date": "2026-11-01",
+   "attribute": "Birth-parent leave at full pay (weeks)",
+   "value": "16",
+   "evidence_span": "| Birth-parent leave at full pay (weeks) | 16 |"
+  }
+ },
+ {
+  "kind": "version_change",
+  "scope": "IE",
+  "documents": [
+   "POL-v2.0-CH43",
+   "POL-v3.0-CH43"
+  ],
+  "sources": [
+   {
+    "doc_id": "POL-v2.0-CH43",
+    "version": "2.0",
+    "status": "superseded",
+    "effective_date": "2024-01-01",
+    "attribute": "Employer retirement contribution (% of pay)",
+    "value": "5",
+    "evidence_span": "| Employer retirement contribution (% of pay) | 5 |"
+   },
+   {
+    "doc_id": "POL-v3.0-CH43",
+    "version": "3.0",
+    "status": "current",
+    "effective_date": "2026-11-01",
+    "attribute": "Employer retirement contribution (% of pay)",
+    "value": "6",
+    "evidence_span": "| Employer retirement contribution (% of pay) | 6 |"
+   }
+  ],
+  "applies": {
+   "doc_id": "POL-v3.0-CH43",
+   "version": "3.0",
+   "status": "current",
+   "effective_date": "2026-11-01",
+   "attribute": "Employer retirement contribution (% of pay)",
+   "value": "6",
+   "evidence_span": "| Employer retirement contribution (% of pay) | 6 |"
+  }
+ },
+ {
+  "kind": "version_change",
+  "scope": "SG",
+  "documents": [
+   "POL-v2.0-CH44",
+   "POL-v3.0-CH44"
+  ],
+  "sources": [
+   {
+    "doc_id": "POL-v2.0-CH44",
+    "version": "2.0",
+    "status": "superseded",
+    "effective_date": "2024-01-01",
+    "attribute": "Annual leave — Company policy",
+    "value": "16 days, rising to 19 days after 5 years",
+    "evidence_span": "| Annual leave | 7 days, rising by 1 day a year to 14 | 16 days, rising to 19 days after 5 years |"
+   },
+   {
+    "doc_id": "POL-v3.0-CH44",
+    "version": "3.0",
+    "status": "current",
+    "effective_date": "2026-11-01",
+    "attribute": "Annual leave — Company policy",
+    "value": "18 days, rising to 21 days after 5 years",
+    "evidence_span": "| Annual leave | 7 days, rising by 1 day a year to 14 | 18 days, rising to 21 days after 5 years |"
+   }
+  ],
+  "applies": {
+   "doc_id": "POL-v3.0-CH44",
+   "version": "3.0",
+   "status": "current",
+   "effective_date": "2026-11-01",
+   "attribute": "Annual leave — Company policy",
+   "value": "18 days, rising to 21 days after 5 years",
+   "evidence_span": "| Annual leave | 7 days, rising by 1 day a year to 14 | 18 days, rising to 21 days after 5 years |"
+  }
+ },
+ {
+  "kind": "version_change",
+  "scope": "SG",
+  "documents": [
+   "POL-v2.0-CH44",
+   "POL-v3.0-CH44"
+  ],
+  "sources": [
+   {
+    "doc_id": "POL-v2.0-CH44",
+    "version": "2.0",
+    "status": "superseded",
+    "effective_date": "2024-01-01",
+    "attribute": "Paid annual leave (working days)",
+    "value": "16",
+    "evidence_span": "| Paid annual leave (working days) | 16 |"
+   },
+   {
+    "doc_id": "POL-v3.0-CH44",
+    "version": "3.0",
+    "status": "current",
+    "effective_date": "2026-11-01",
+    "attribute": "Paid annual leave (working days)",
+    "value": "18",
+    "evidence_span": "| Paid annual leave (working days) | 18 |"
+   }
+  ],
+  "applies": {
+   "doc_id": "POL-v3.0-CH44",
+   "version": "3.0",
+   "status": "current",
+   "effective_date": "2026-11-01",
+   "attribute": "Paid annual leave (working days)",
+   "value": "18",
+   "evidence_span": "| Paid annual leave (working days) | 18 |"
+  }
+ },
+ {
+  "kind": "update_pending",
+  "scope": "IN",
+  "documents": [
+   "HR-CIR-2026-14",
+   "POL-v3.0-CH12"
+  ],
+  "sources": [
+   {
+    "doc_id": "POL-v3.0-CH12",
+    "version": "3.0",
+    "status": "current",
+    "effective_date": "2026-11-01",
+    "attribute": "Night",
+    "value": "₹600",
+    "evidence_span": "| Night | ₹600 |"
+   },
+   {
+    "doc_id": "HR-CIR-2026-14",
+    "version": "",
+    "status": "announced",
+    "effective_date": "2027-01-01",
+    "attribute": "Night shift allowance",
+    "value": "₹700 per night",
+    "evidence_span": "| India — Night shift allowance | ₹600 per night | ₹700 per night |"
+   }
+  ],
+  "applies": {
+   "doc_id": "POL-v3.0-CH12",
+   "version": "3.0",
+   "status": "current",
+   "effective_date": "2026-11-01",
+   "attribute": "Night",
+   "value": "₹600",
+   "evidence_span": "| Night | ₹600 |"
+  },
+  "pending_value": "₹700 per night"
+ },
+ {
+  "kind": "update_pending",
+  "scope": "UK",
+  "documents": [
+   "HR-CIR-2026-15",
+   "POL-v3.0-CH40"
+  ],
+  "sources": [
+   {
+    "doc_id": "POL-v3.0-CH40",
+    "version": "3.0",
+    "status": "current",
+    "effective_date": "2026-11-01",
+    "attribute": "Carer's leave — Company enhancement",
+    "value": "5 days paid (Chapter 37)",
+    "evidence_span": "| Carer's leave | 1 week unpaid a year | 5 days paid (Chapter 37) |"
+   },
+   {
+    "doc_id": "HR-CIR-2026-15",
+    "version": "",
+    "status": "announced",
+    "effective_date": "2027-01-01",
+    "attribute": "UK annual leave",
+    "value": "27 days",
+    "evidence_span": "| United Kingdom — UK annual leave | 25 days | 27 days |"
+   }
+  ],
+  "applies": {
+   "doc_id": "POL-v3.0-CH40",
+   "version": "3.0",
+   "status": "current",
+   "effective_date": "2026-11-01",
+   "attribute": "Carer's leave — Company enhancement",
+   "value": "5 days paid (Chapter 37)",
+   "evidence_span": "| Carer's leave | 1 week unpaid a year | 5 days paid (Chapter 37) |"
+  },
+  "pending_value": "27 days"
+ },
+ {
+  "kind": "update_pending",
+  "scope": "NL",
+  "documents": [
+   "HR-CIR-2026-19",
+   "POL-v3.0-CH42"
+  ],
+  "sources": [
+   {
+    "doc_id": "POL-v3.0-CH42",
+    "version": "3.0",
+    "status": "current",
+    "effective_date": "2026-11-01",
+    "attribute": "Paid annual leave (working days)",
+    "value": "25",
+    "evidence_span": "| Paid annual leave (working days) | 25 |"
+   },
+   {
+    "doc_id": "HR-CIR-2026-19",
+    "version": "",
+    "status": "announced",
+    "effective_date": "2027-01-01",
+    "attribute": "Netherlands annual leave",
+    "value": "26 days",
+    "evidence_span": "| Netherlands — Netherlands annual leave | 25 days | 26 days |"
+   }
+  ],
+  "applies": {
+   "doc_id": "POL-v3.0-CH42",
+   "version": "3.0",
+   "status": "current",
+   "effective_date": "2026-11-01",
+   "attribute": "Paid annual leave (working days)",
+   "value": "25",
+   "evidence_span": "| Paid annual leave (working days) | 25 |"
+  },
+  "pending_value": "26 days"
+ },
+ {
+  "kind": "stale_secondary",
+  "scope": "AE",
+  "documents": [
+   "BEN-AE",
+   "POL-v3.0-CH45"
+  ],
+  "sources": [
+   {
+    "doc_id": "BEN-AE",
+    "version": "",
+    "status": "",
+    "effective_date": "",
+    "attribute": "Annual leave — Entitlement",
+    "value": "22 working days",
+    "evidence_span": "| Annual leave | 22 working days | Accrues monthly; carry-forward as per addendum |"
+   },
+   {
+    "doc_id": "POL-v3.0-CH45",
+    "version": "3.0",
+    "status": "current",
+    "effective_date": "2026-11-01",
+    "attribute": "Annual leave — Statutory",
+    "value": "30 calendar days after 1 year; 2 days a month after 6 months",
+    "evidence_span": "| Annual leave | 30 calendar days after 1 year; 2 days a month after 6 months | 30 calendar days from joining, pro rata |"
+   }
+  ],
+  "applies": {
+   "doc_id": "POL-v3.0-CH45",
+   "version": "3.0",
+   "status": "current",
+   "effective_date": "2026-11-01",
+   "attribute": "Annual leave — Statutory",
+   "value": "30 calendar days after 1 year; 2 days a month after 6 months",
+   "evidence_span": "| Annual leave | 30 calendar days after 1 year; 2 days a month after 6 months | 30 calendar days from joining, pro rata |"
+  }
+ },
+ {
+  "kind": "stale_secondary",
+  "scope": "AU",
+  "documents": [
+   "BEN-AU",
+   "POL-v3.0-CH47"
+  ],
+  "sources": [
+   {
+    "doc_id": "BEN-AU",
+    "version": "",
+    "status": "",
+    "effective_date": "",
+    "attribute": "Caregiver leave — Entitlement",
+    "value": "5 working days",
+    "evidence_span": "| Caregiver leave | 5 working days | Global minimum |"
+   },
+   {
+    "doc_id": "POL-v3.0-CH47",
+    "version": "3.0",
+    "status": "current",
+    "effective_date": "2026-11-01",
+    "attribute": "Personal/carer's leave — Company policy",
+    "value": "12 days paid a year, accumulating",
+    "evidence_span": "| Personal/carer's leave | 10 days paid a year, accumulating | 12 days paid a year, accumulating |"
+   }
+  ],
+  "applies": {
+   "doc_id": "POL-v3.0-CH47",
+   "version": "3.0",
+   "status": "current",
+   "effective_date": "2026-11-01",
+   "attribute": "Personal/carer's leave — Company policy",
+   "value": "12 days paid a year, accumulating",
+   "evidence_span": "| Personal/carer's leave | 10 days paid a year, accumulating | 12 days paid a year, accumulating |"
+  }
+ }
+]

@@ -158,3 +158,93 @@ class CoverageReportTests(unittest.TestCase):
             self.assertAlmostEqual(row["interval_coverage"], 2 / 3)
             self.assertEqual(row["n_interval"], 3)
             self.assertIn("Interval coverage", (Path(td) / "hypotheses.md").read_text())
+
+
+class ResumeTests(unittest.TestCase):
+    def test_interrupted_run_resumes_and_retries_failures(self):
+        with tempfile.TemporaryDirectory() as td:
+            kw = dict(tier="S", methods=("rag_topk",), limit=3, lexical_fallback=True)
+            llm = StubLLM()
+            run_answers(ROOT / "data" / "bragslabs_corpus.zip", ROOT / "data" / "extracted", td, llm=llm, **kw)
+            first = llm.usage["calls"]
+            path = Path(td) / "answers.csv"
+            df = pd.read_csv(path)
+            df["error"] = df["error"].astype(object)
+            df.loc[df.index[-1], "error"] = "TimeoutError: simulated"   # one answer failed
+            df.to_csv(path, index=False)
+            llm2 = StubLLM()
+            out = run_answers(ROOT / "data" / "bragslabs_corpus.zip", ROOT / "data" / "extracted", td, llm=llm2, **kw)
+            self.assertEqual(llm2.usage["calls"], 1)          # only the failed answer is redone
+            self.assertEqual(len(out), 3)
+            self.assertTrue((out.error.fillna("") == "").all())
+            self.assertGreater(first, 0)
+
+
+from lensrag.hypotheses_tex import write_tex, esc  # noqa: E402
+
+
+class TexTests(unittest.TestCase):
+    def test_latex_document_is_well_formed_and_states_verdicts(self):
+        import re
+        with tempfile.TemporaryDirectory() as td:
+            synthetic_metrics().to_csv(Path(td) / "metrics.csv", index=False)
+            pd.DataFrame([{"tier": "L", "qid": f"Q{i}", "method": m, "scope": "global", "exact_match": float(m == "lensrag" or i % 3 == 0),
+                           "set_f1": 0.5, "interval_covered": None, "total_tokens": 100, "latency_s": 1.0, "error": ""}
+                          for i in range(12) for m in ("lensrag", "rag_topk")]).to_csv(Path(td) / "answers.csv", index=False)
+            r = analyse(td)
+            tex = Path(write_tex(r, td, Path(td) / "h.tex")).read_text()
+        body = re.sub(r"\\[{}%&#_$]", "", tex)
+        self.assertEqual(body.count("{"), body.count("}"))
+        stack = []
+        for kind, env in re.findall(r"\\(begin|end)\{(\w+)\}", tex):
+            if kind == "begin":
+                stack.append(env)
+            else:
+                self.assertEqual(stack.pop(), env)
+        self.assertEqual(stack, [])
+        for section in ("H1:", "H2:", "H3:", "Limitations"):
+            self.assertIn(section, tex)
+        self.assertEqual(tex.count(r"\textbf{Verdict.}"), 3)
+        self.assertIn("supports", tex)  # LensRAG wins 8 of 12 paired answers in the synthetic data
+        self.assertEqual(esc("lensrag_rerank 50% & more"), r"lensrag\_rerank 50\% \& more")
+
+
+from lensrag.answers import answer_from_estimate  # noqa: E402
+
+
+class EstimateAnswerTests(unittest.TestCase):
+    MEAN = {"groups": {"all": {"estimate": 3.4319, "ci_low": 3.19, "ci_high": 3.67, "population": 2057, "what": "mean value"}}}
+    COUNT = {"groups": {"all": {"estimate": 55, "ci_low": 42, "ci_high": 70, "population": 332, "what": "number of matching records"}}}
+    CATS = {"groups": {"all": {"population": 125, "categories": [
+        {"category": "leave", "estimate": 0.1, "ci_low": 0.05, "ci_high": 0.2},
+        {"category": "hybrid", "estimate": 0.25, "ci_low": 0.2, "ci_high": 0.3}]}}}
+    PERIODS = {"groups": {"(1, 2)": {"estimate": 0.5, "population": 30, "what": "share meeting the condition"},
+                          "(3, 4)": {"estimate": 0.8, "population": 50, "what": "share meeting the condition"}}}
+
+    def test_value_comes_from_the_estimate_not_the_llm(self):
+        self.assertEqual(answer_from_estimate(self.MEAN, "What is the average rating?", "value"), 3.432)
+        self.assertEqual(answer_from_estimate(self.COUNT, "How many tickets mention payroll?", "value"), 55)
+        self.assertAlmostEqual(answer_from_estimate(self.COUNT, "What share of tickets mention payroll?", "ratio"), 55 / 332)
+
+    def test_category_tuple_gives_the_top_category_as_a_count_or_share(self):
+        self.assertEqual(answer_from_estimate(self.CATS, "Which category was most common, and how many tickets?", "tuple"), ["hybrid", 31])
+        self.assertEqual(answer_from_estimate(self.CATS, "Which category had the largest share?", "tuple"), ["hybrid", 0.25])
+        self.assertEqual(answer_from_estimate(self.CATS, "Rank the categories", "ranked_list"), [["hybrid", 31], ["leave", 12]])
+
+    def test_two_periods_become_a_before_after_tuple(self):
+        self.assertEqual(answer_from_estimate(self.PERIODS, "What share before and after?", "tuple"), [0.5, 0.8])
+        self.assertEqual(answer_from_estimate(self.PERIODS, "How many grievances before and after?", "tuple"), [15, 40])
+
+    def test_no_estimate_or_unfitting_shape_falls_back(self):
+        self.assertIsNone(answer_from_estimate({}, "q", "value"))
+        self.assertIsNone(answer_from_estimate(self.PERIODS, "q", "value"))
+
+
+class CurrencyScoringTests(unittest.TestCase):
+    def test_amount_without_symbol_matches_but_another_currency_does_not(self):
+        from lensrag.answers import score_answer
+        self.assertEqual(score_answer("600", "₹600", "value"), (1.0, 1.0))
+        self.assertEqual(score_answer(40000, "₹40,000", "value"), (1.0, 1.0))
+        self.assertEqual(score_answer("$600", "₹600", "value"), (0.0, 0.0))
+        self.assertEqual(score_answer("700", "₹600", "value"), (0.0, 0.0))
+        self.assertEqual(score_answer("₹200 (from ₹400)", "₹200 (from ₹400 to ₹600)", "value"), (0.0, 0.0))

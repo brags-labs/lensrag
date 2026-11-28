@@ -1,0 +1,378 @@
+{
+ "0.85": {
+  "threshold": 0.85,
+  "flags": 34,
+  "by_kind": {
+   "version_change": 34
+  },
+  "detected": 1,
+  "planted": 12,
+  "resolution_right": 1,
+  "resolution_scored": 8,
+  "non_version_flags": 0,
+  "non_version_matching_planted": 0,
+  "conflicts": [
+   {
+    "id": "CF-01",
+    "kind": "intra_manual",
+    "detected": false,
+    "flags": 0,
+    "resolution_scored": true,
+    "resolution_right": false,
+    "flag_kinds": []
+   },
+   {
+    "id": "CF-02",
+    "kind": "future_circular",
+    "detected": false,
+    "flags": 0,
+    "resolution_scored": false,
+    "resolution_right": false,
+    "flag_kinds": []
+   },
+   {
+    "id": "CF-03",
+    "kind": "future_circular",
+    "detected": false,
+    "flags": 0,
+    "resolution_scored": false,
+    "resolution_right": false,
+    "flag_kinds": []
+   },
+   {
+    "id": "CF-04",
+    "kind": "future_circular",
+    "detected": false,
+    "flags": 0,
+    "resolution_scored": false,
+    "resolution_right": false,
+    "flag_kinds": []
+   },
+   {
+    "id": "CF-05",
+    "kind": "future_circular",
+    "detected": false,
+    "flags": 0,
+    "resolution_scored": false,
+    "resolution_right": false,
+    "flag_kinds": []
+   },
+   {
+    "id": "CF-06",
+    "kind": "stale_faq",
+    "detected": false,
+    "flags": 0,
+    "resolution_scored": true,
+    "resolution_right": false,
+    "flag_kinds": []
+   },
+   {
+    "id": "CF-07",
+    "kind": "stale_faq",
+    "detected": false,
+    "flags": 0,
+    "resolution_scored": true,
+    "resolution_right": false,
+    "flag_kinds": []
+   },
+   {
+    "id": "CF-08",
+    "kind": "stale_handbook",
+    "detected": false,
+    "flags": 0,
+    "resolution_scored": true,
+    "resolution_right": false,
+    "flag_kinds": []
+   },
+   {
+    "id": "CF-09",
+    "kind": "stale_handbook",
+    "detected": false,
+    "flags": 0,
+    "resolution_scored": true,
+    "resolution_right": false,
+    "flag_kinds": []
+   },
+   {
+    "id": "CF-10",
+    "kind": "stale_benefits",
+    "detected": false,
+    "flags": 0,
+    "resolution_scored": true,
+    "resolution_right": false,
+    "flag_kinds": []
+   },
+   {
+    "id": "CF-11",
+    "kind": "version",
+    "detected": true,
+    "flags": 1,
+    "resolution_scored": true,
+    "resolution_right": true,
+    "flag_kinds": [
+     "version_change"
+    ]
+   },
+   {
+    "id": "CF-12",
+    "kind": "version",
+    "detected": false,
+    "flags": 0,
+    "resolution_scored": true,
+    "resolution_right": false,
+    "flag_kinds": []
+   }
+  ]
+ },
+ "0.8": {
+  "threshold": 0.8,
+  "flags": 51,
+  "by_kind": {
+   "version_change": 34,
+   "stale_secondary": 17
+  },
+  "detected": 1,
+  "planted": 12,
+  "resolution_right": 1,
+  "resolution_scored": 8,
+  "non_version_flags": 17,
+  "non_version_matching_planted": 0,
+  "conflicts": [
+   {
+    "id": "CF-01",
+    "kind": "intra_manual",
+    "detected": false,
+    "flags": 0,
+    "resolution_scored": true,
+    "resolution_right": false,
+    "flag_kinds": []
+   },
+   {
+    "id": "CF-02",
+    "kind": "future_circular",
+    "detected": false,
+    "flags": 0,
+    "resolution_scored": false,
+    "resolution_right": false,
+    "flag_kinds": []
+   },
+   {
+    "id": "CF-03",
+    "kind": "future_circular",
+    "detected": false,
+    "flags": 0,
+    "resolution_scored": false,
+    "resolution_right": false,
+    "flag_kinds": []
+   },
+   {
+    "id": "CF-04",
+    "kind": "future_circular",
+    "detected": false,
+    "flags": 0,
+    "resolution_scored": false,
+    "resolution_right": false,
+    "flag_kinds": []
+   },
+   {
+    "id": "CF-05",
+    "kind": "future_circular",
+    "detected": false,
+    "flags": 0,
+    "resolution_scored": false,
+    "resolution_right": false,
+    "flag_kinds": []
+   },
+   {
+    "id": "CF-06",
+    "kind": "stale_faq",
+    "detected": false,
+    "flags": 0,
+    "resolution_scored": true,
+    "resolution_right": false,
+    "flag_kinds": []
+   },
+   {
+    "id": "CF-07",
+    "kind": "stale_faq",
+    "detected": false,
+    "flags": 0,
+    "resolution_scored": true,
+    "resolution_right": false,
+    "flag_kinds": []
+   },
+   {
+    "id": "CF-08",
+    "kind": "stale_handbook",
+    "detected": false,
+    "flags": 0,
+    "resolution_scored": true,
+    "resolution_right": false,
+    "flag_kinds": []
+   },
+   {
+    "id": "CF-09",
+    "kind": "stale_handbook",
+    "detected": false,
+    "flags": 0,
+    "resolution_scored": true,
+    "resolution_right": false,
+    "flag_kinds": []
+   },
+   {
+    "id": "CF-10",
+    "kind": "stale_benefits",
+    "detected": false,
+    "flags": 0,
+    "resolution_scored": true,
+    "resolution_right": false,
+    "flag_kinds": []
+   },
+   {
+    "id": "CF-11",
+    "kind": "version",
+    "detected": true,
+    "flags": 1,
+    "resolution_scored": true,
+    "resolution_right": true,
+    "flag_kinds": [
+     "version_change"
+    ]
+   },
+   {
+    "id": "CF-12",
+    "kind": "version",
+    "detected": false,
+    "flags": 0,
+    "resolution_scored": true,
+    "resolution_right": false,
+    "flag_kinds": []
+   }
+  ]
+ },
+ "0.9": {
+  "threshold": 0.9,
+  "flags": 34,
+  "by_kind": {
+   "version_change": 34
+  },
+  "detected": 1,
+  "planted": 12,
+  "resolution_right": 1,
+  "resolution_scored": 8,
+  "non_version_flags": 0,
+  "non_version_matching_planted": 0,
+  "conflicts": [
+   {
+    "id": "CF-01",
+    "kind": "intra_manual",
+    "detected": false,
+    "flags": 0,
+    "resolution_scored": true,
+    "resolution_right": false,
+    "flag_kinds": []
+   },
+   {
+    "id": "CF-02",
+    "kind": "future_circular",
+    "detected": false,
+    "flags": 0,
+    "resolution_scored": false,
+    "resolution_right": false,
+    "flag_kinds": []
+   },
+   {
+    "id": "CF-03",
+    "kind": "future_circular",
+    "detected": false,
+    "flags": 0,
+    "resolution_scored": false,
+    "resolution_right": false,
+    "flag_kinds": []
+   },
+   {
+    "id": "CF-04",
+    "kind": "future_circular",
+    "detected": false,
+    "flags": 0,
+    "resolution_scored": false,
+    "resolution_right": false,
+    "flag_kinds": []
+   },
+   {
+    "id": "CF-05",
+    "kind": "future_circular",
+    "detected": false,
+    "flags": 0,
+    "resolution_scored": false,
+    "resolution_right": false,
+    "flag_kinds": []
+   },
+   {
+    "id": "CF-06",
+    "kind": "stale_faq",
+    "detected": false,
+    "flags": 0,
+    "resolution_scored": true,
+    "resolution_right": false,
+    "flag_kinds": []
+   },
+   {
+    "id": "CF-07",
+    "kind": "stale_faq",
+    "detected": false,
+    "flags": 0,
+    "resolution_scored": true,
+    "resolution_right": false,
+    "flag_kinds": []
+   },
+   {
+    "id": "CF-08",
+    "kind": "stale_handbook",
+    "detected": false,
+    "flags": 0,
+    "resolution_scored": true,
+    "resolution_right": false,
+    "flag_kinds": []
+   },
+   {
+    "id": "CF-09",
+    "kind": "stale_handbook",
+    "detected": false,
+    "flags": 0,
+    "resolution_scored": true,
+    "resolution_right": false,
+    "flag_kinds": []
+   },
+   {
+    "id": "CF-10",
+    "kind": "stale_benefits",
+    "detected": false,
+    "flags": 0,
+    "resolution_scored": true,
+    "resolution_right": false,
+    "flag_kinds": []
+   },
+   {
+    "id": "CF-11",
+    "kind": "version",
+    "detected": true,
+    "flags": 1,
+    "resolution_scored": true,
+    "resolution_right": true,
+    "flag_kinds": [
+     "version_change"
+    ]
+   },
+   {
+    "id": "CF-12",
+    "kind": "version",
+    "detected": false,
+    "flags": 0,
+    "resolution_scored": true,
+    "resolution_right": false,
+    "flag_kinds": []
+   }
+  ]
+ }
+}

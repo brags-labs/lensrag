@@ -95,7 +95,7 @@ def route_query(question: str):
     return detect_type(question)
 
 
-def coverage_retrieve(index, plan, scopes, judge=None, page=5, max_rounds=4):
+def coverage_retrieve(index, plan, scopes, judge=None, page=5, max_rounds=4, workers=1):
     """Per-entity retrieval that keeps going until no scope yields new relevant evidence.
 
     Each round fetches the next `page` chunks for every still-active scope. With a
@@ -108,6 +108,8 @@ def coverage_retrieve(index, plan, scopes, judge=None, page=5, max_rounds=4):
     evidence is credited to each entity it covers.
 
     judge(scope, [(chunk, score)]) -> [(chunk, score, payload)] for the relevant chunks.
+    With workers > 1 the scopes' pages of a round are judged concurrently (a local server with
+    several parallel slots decodes them together); the result is the same as judging in turn.
     Returns (hits, telemetry); hits are (chunk, score, scope_label, payload), one per
     (scope, chunk) pair, best first.
     """
@@ -116,13 +118,21 @@ def coverage_retrieve(index, plan, scopes, judge=None, page=5, max_rounds=4):
     active=list(scopes); evidence_by_scope={s.label:0 for s in scopes}
     rounds=0; converged=False
     for _ in range(max_rounds if judge else 1):
-        rounds+=1; next_active=[]
+        rounds+=1; next_active=[]; pages=[]
         for sc in active:
             batch=index.search(sc.query,page,where=scope_filter(plan,sc),offset=offsets[sc.key()])
             offsets[sc.key()]+=page
             fresh=[(c,s) for c,s in batch if c.chunk_id not in seen[sc.key()]]
             seen[sc.key()].update(c.chunk_id for c,_ in fresh)
-            relevant=[(c,s,None) for c,s in fresh] if judge is None else (judge(sc,fresh) if fresh else [])
+            pages.append((sc,batch,fresh))
+        judged=lambda item: [(c,s,None) for c,s in item[2]] if judge is None else (judge(item[0],item[2]) if item[2] else [])
+        if workers>1 and judge is not None and len(pages)>1:
+            from concurrent.futures import ThreadPoolExecutor
+            with ThreadPoolExecutor(max_workers=workers) as pool:
+                results=list(pool.map(judged,pages))
+        else:
+            results=[judged(x) for x in pages]
+        for (sc,batch,fresh),relevant in zip(pages,results):
             for c,s,payload in relevant:
                 kept.setdefault((sc.key(),c.chunk_id),(c,s,sc.label,payload))
             evidence_by_scope[sc.label]+=len(relevant)
@@ -138,6 +148,20 @@ def coverage_retrieve(index, plan, scopes, judge=None, page=5, max_rounds=4):
                "chunks":len(per_chunk),"shared_chunks":sum(1 for n in per_chunk.values() if n>1),
                "scopes_without_evidence":[k for k,v in evidence_by_scope.items() if v==0]}
     return hits,telemetry
+
+
+# Relevance thresholds per judge model. Scores are on different scales (MS MARCO gives logits,
+# the BGE reranker probabilities), so each is calibrated: MS MARCO on the benchmark, BGE on odd
+# question ids with even ones held out (results/archive/dense_bge_m3/judge_calibration.csv, docs/LOCAL_MODELS.md).
+JUDGE_THRESHOLDS = {"cross-encoder/ms-marco-MiniLM-L-6-v2": -4.0, "BAAI/bge-reranker-v2-m3": 0.05}
+
+
+def judge_threshold_for(model_name, threshold=None):
+    if threshold is not None:
+        return threshold
+    if model_name not in JUDGE_THRESHOLDS:
+        raise ValueError(f"No calibrated threshold for {model_name}: pass --judge-threshold")
+    return JUDGE_THRESHOLDS[model_name]
 
 
 class CrossEncoderJudge:

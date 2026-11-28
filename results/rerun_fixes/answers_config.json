@@ -1,0 +1,21 @@
+{
+  "tier": "L",
+  "methods": [
+    "lensrag"
+  ],
+  "llm_provider": "RoutedLLM",
+  "llm_model": "classify=lensrag-qwen2.5-3b / extract=lensrag-qwen2.5-14b / map=lensrag-qwen2.5-14b / reduce=lensrag-qwen2.5-32b / verify=lensrag-qwen2.5-14b / answer=lensrag-qwen2.5-32b",
+  "llm_effort": null,
+  "top_k": 10,
+  "questions": 89,
+  "domain": "hr",
+  "rag_topk_retrieval": "hybrid BM25 + BAAI/bge-m3",
+  "lensrag_components": {
+    "embedding_model": "BAAI/bge-m3",
+    "reranker_model": "BAAI/bge-reranker-v2-m3",
+    "spacy_model": "en_core_web_sm",
+    "nli_model": "cross-encoder/nli-deberta-v3-large",
+    "sentiment_model": "cardiffnlp/twitter-roberta-base-sentiment-latest"
+  },
+  "lensrag_index": "/Users/gautampandey/learn/capstone/lensrag/artifacts/index_L_bge-m3"
+}

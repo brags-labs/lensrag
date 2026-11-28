@@ -23,17 +23,39 @@ ROLES = ("classify", "extract", "map", "reduce", "verify", "answer")
 # Ollama model tags; the "lensrag-" variants are the same weights with a 32k context window
 # (see `ollama_variants` and docs/LOCAL_MODELS.md). 72B models don't fit in 36 GB, so the strong
 # roles use Qwen2.5-32B.
+# The non-LLM open-source components of Table 3.1 (see full/local_models.py), switched on by
+# the local stacks. Each can be turned off per run with LENSRAG_<NAME>=off.
+LOCAL_COMPONENTS = {
+    "embedding_model": "BAAI/bge-m3",                                       # Search: dense embeddings
+    "reranker_model": "BAAI/bge-reranker-v2-m3",                            # Search + rerank
+    "spacy_model": "en_core_web_sm",                                        # Select entities: NER
+    "nli_model": "cross-encoder/nli-deberta-v3-large",                      # Verify evidence: NLI
+    "sentiment_model": "cardiffnlp/twitter-roberta-base-sentiment-latest",  # Per-record sentiment labels
+}
+
 STACKS = {
     "local-qwen": {
         "provider": "ollama",
         "roles": {"classify": "lensrag-qwen2.5-3b", "extract": "lensrag-qwen2.5-14b", "map": "lensrag-qwen2.5-14b",
                   "reduce": "lensrag-qwen2.5-32b", "verify": "lensrag-qwen2.5-14b", "answer": "lensrag-qwen2.5-32b"},
+        "components": LOCAL_COMPONENTS,
     },
     "local-qwen-14b": {  # one mid-size model everywhere: faster, less memory
         "provider": "ollama",
         "roles": {r: "lensrag-qwen2.5-14b" for r in ROLES},
+        "components": LOCAL_COMPONENTS,
     },
 }
+
+
+def stack_components(stack):
+    """The stack's non-LLM components, with LENSRAG_<NAME>=off (or another model name) applied."""
+    comps = dict((STACKS.get(stack) or {}).get("components") or {})
+    for name in list(comps):
+        override = os.getenv(f"LENSRAG_{name.upper()}")
+        if override:
+            comps[name] = None if override.lower() in ("off", "none", "0") else override
+    return comps
 
 
 def ollama_variants(stack="local-qwen", num_ctx=32768):
@@ -60,6 +82,10 @@ class _RoleView:
 
     def text(self, system, user, **kw):
         return self.parent._call(self.role, "text", system, user, **kw)
+
+
+import threading
+_USAGE_LOCK = threading.Lock()
 
 
 class RoutedLLM:
@@ -92,13 +118,17 @@ class RoutedLLM:
             out = getattr(c, kind)(system, user, **kw)
         except TypeError:
             out = getattr(c, kind)(system, user)
+        # A client that reports its own last call (per thread) is exact under concurrency;
+        # otherwise the difference of its running totals (exact when calls don't overlap).
+        last = c.last_call_usage() if hasattr(c, "last_call_usage") else None
         after = getattr(c, "usage", {}) or {}
-        role_u = self.usage["by_role"].setdefault(role, {"calls": 0, "prompt_tokens": 0, "completion_tokens": 0})
-        for k in ("prompt_tokens", "completion_tokens", "cache_read_tokens", "cache_write_tokens", "calls"):
-            d = (after.get(k, 0) or 0) - (before.get(k, 0) or 0)
-            self.usage[k] = self.usage.get(k, 0) + d
-            if k in role_u:
-                role_u[k] += d
+        with _USAGE_LOCK:
+            role_u = self.usage["by_role"].setdefault(role, {"calls": 0, "prompt_tokens": 0, "completion_tokens": 0})
+            for k in ("prompt_tokens", "completion_tokens", "cache_read_tokens", "cache_write_tokens", "calls"):
+                d = (last or {}).get(k, 0) if last is not None else (after.get(k, 0) or 0) - (before.get(k, 0) or 0)
+                self.usage[k] = self.usage.get(k, 0) + d
+                if k in role_u:
+                    role_u[k] += d
         return out
 
     def with_role(self, role):
