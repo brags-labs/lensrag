@@ -194,8 +194,10 @@ index-time structures, LensRAG answers 83--85\% of corpus-level questions
 exactly against 24\% for standard RAG with the same 14B model (43 wins, 1
 loss, $p<10^{-11}$), keeps all single-passage questions correct, and answers
 80 of 89 questions within 45 seconds at a median of 5 seconds and about the
-same token cost. These scores were measured on the questions the method was
-developed on; a held-out evaluation remains to be done. The corpus, gold
+same token cost. These are development scores. On 40 held-out questions
+written after the code was frozen, global exact match falls to 66\% against
+19\% for standard RAG (19 wins, 4 losses, $p=0.001$), and LensRAG misses 2 of
+8 single-passage questions that standard RAG answers. The corpus, gold
 answers and a tested implementation will be released with the paper.
 
 \vspace{1em}
@@ -581,7 +583,8 @@ baselines, without reducing accuracy on local questions.
   at index time and computing answers in code raised global exact match to
   0.83 against 0.24 for standard RAG with the same local 14B model, with a
   median of 5 seconds per answer (Chapter~\ref{ch:results}). These are
-  development scores, measured on the questions the method was tuned on.
+  development scores. On a held-out set of 40 new questions, scored once
+  with the code frozen, global exact match is 0.66 against 0.19.
   \item \textbf{Practitioner guidance:} recommendations on when global
   questions need more than standard RAG, and which strategy suits which
   question type.
@@ -1448,6 +1451,30 @@ embeddings as the fast profile. The long-context answer
 baseline was not run with local models: their 32k-token context cannot hold
 even tier S. Long context is therefore evaluated at the retrieval level only.
 
+\paragraph{Held-out questions.}
+Because the fast profile was developed on the 89 tier-L questions, a second
+set of 40 questions was written after the development work ended, and scored
+once without changes to the method. The procedure was:
+\begin{itemize}
+  \item The code was frozen first (git tag \texttt{heldout-frozen}). The only
+  later change to the system is an environment variable that selects the
+  question file.
+  \item A script draws the questions from the ledger with a new random seed,
+  using entities, records and slots that the development questions do not
+  use, and computes each gold answer from the ledger. No question repeats a
+  development question.
+  \item The set has 8 local and 32 global questions: count (7), extremum (5),
+  rank, filter, aggregate, theme and version difference (3 each), temporal
+  (2), comparison (2) and sentiment shift (1). It was reviewed for wording
+  and committed (SHA-256 \texttt{56900caa\ldots 935c}) before any system was
+  run on it.
+  \item LensRAG (fast profile) and standard RAG with the same 14B model and
+  BGE-M3 retrieval were each run once, and scored with the same tests as the
+  development set.
+\end{itemize}
+The held-out questions use the same templates as the development questions,
+so they test new entities and values rather than new phrasings.
+
 \paragraph{Metrics.}
 \begin{itemize}
   \item \emph{Retrieval:} evidence-document recall, precision and F1, context
@@ -1555,7 +1582,9 @@ next to the results in \path{run_config.json} and
   because a particular question failed, and the domain configuration holds
   a few classifier phrasings taken from test questions. The fast-profile scores are therefore
   development scores, and are likely to overstate accuracy on new questions.
-  A held-out question set is needed to confirm them.
+  A held-out set confirmed this: global exact match fell from 0.831 to 0.656.
+  The held-out questions were written by the same author with the same
+  templates, after the code was frozen.
   \item \emph{Variation between runs.} LLM outputs vary between runs. The
   first answer runs were generated once, at low temperature (0--0.1). The
   fast profile was run twice: the runs agree on 87 of 89 questions. Serving
@@ -1583,6 +1612,8 @@ next to the results in \path{run_config.json} and
   tier L), which limits statistical power.
   \item Each question type has only 2--16 questions, so per-type results are
   descriptive.
+  \item The held-out set has 40 questions, 8 of them local, so the local
+  comparison has little power in either direction.
 \end{itemize}
 
 \chapter{Implementation}
@@ -1892,7 +1923,72 @@ At the answer level the result depends on the configuration
 H2 is \textbf{supported at the retrieval level}. At the answer level it is
 \textbf{supported for the final configuration}, with the caveat that this
 configuration was developed on the same 89 questions
-(Section~\ref{sec:threats}); a held-out question set is needed to confirm it.
+(Section~\ref{sec:threats}).
+
+\paragraph{H2 on held-out questions.}
+On the 40 held-out questions (Table~\ref{tab:heldout}):
+\begin{itemize}
+  \item \emph{Global.} LensRAG's exact match is 0.656 against 0.188 for
+  standard RAG: 19 wins, 4 losses, one-sided sign test $p=0.0013$,
+  difference 0.469 (95\% CI [0.219, 0.688]). Set F1 is 0.730 against 0.401.
+  The advantage holds on questions the method was not developed on, but it
+  is smaller than on the development set (0.831), so the development score
+  overstated accuracy.
+  \item \emph{Local.} LensRAG answers 6 of 8 local questions, standard RAG
+  all 8. Both misses (H007, H008) ask for an office's floors or parking
+  spaces and were answered ``1'' by the passage-retrieval path. With 8
+  questions the difference is not significant, but it is in the wrong
+  direction, and the non-inferiority condition fails.
+  \item \emph{Latency.} Median 6.0 seconds (standard RAG 7.3), 90th
+  percentile 17.9 seconds; 38 of 40 answers within 45 seconds, the slowest
+  189 seconds.
+  \item \emph{By answer path.} The record-field path answered 15 questions
+  with exact match 0.93, the fact table 19 with 0.68, and the six questions
+  left to passage retrieval were all wrong.
+\end{itemize}
+Two held-out questions are flawed. H021 asks for a ranking that the gold
+answer computes without the Netherlands, but unlike its development
+counterpart the question does not say so; LensRAG ranked the Netherlands
+first, which is a reasonable reading. H010 depends on counting the UAE's
+gratuity as 0\%. Without these two, global exact match is 0.700 against
+0.167 (19 wins, 3 losses, $p=0.0004$). Both figures are reported; neither
+changes the conclusion.
+
+\begin{table}[htbp]
+\centering\small
+\caption{H2 on the 40 held-out questions: exact match, LensRAG (fast
+profile) minus standard RAG with the same 14B model and BGE-M3 retrieval,
+paired by question. One run each, code frozen before the questions were
+written.}
+\label{tab:heldout}
+\begin{tabular}{@{}lrrrrlrrr@{}}
+\toprule
+Scope & $n$ & LensRAG & Std RAG & Diff & 95\% CI & Wins & Losses & $p$ \\
+\midrule
+Global & 32 & 0.656 & 0.188 & 0.469 & [0.219, 0.688] & 19 & 4 & 0.0013 \\
+Global, without H010, H021 & 30 & 0.700 & 0.167 & 0.533 & -- & 19 & 3 & 0.0004 \\
+Local & 8 & 0.750 & 1.000 & $-0.250$ & [$-0.625$, 0.000] & 0 & 2 & 1.000 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The held-out misses fall into a few groups:
+\begin{itemize}
+  \item \emph{Office facts} (H007, H008, H011, H018, H025): floors, parking,
+  opening years and locations in the office handbooks. These rows are not
+  linked to their office in the fact table, so the questions fell to passage
+  retrieval or were answered at the wrong level (H018 named the country,
+  India, instead of Bengaluru).
+  \item \emph{Temporal questions} (H036, H037): answered ``unsupported''
+  where standard RAG answered both.
+  \item \emph{Filters and versions} (H014, H026, H034): a count of 76 where
+  no record matches, a two-condition filter applied wrongly, and all
+  countries listed instead of the two added in version 2.0.
+  \item \emph{eNPS} (H020): ``unknown'' after 113 seconds.
+\end{itemize}
+H2 is therefore \textbf{supported for global questions} on held-out data,
+with a smaller effect than on the development set, and \textbf{not supported
+as stated}, because the local non-inferiority condition fails.
 
 \begin{table}[htbp]
 \centering\small
@@ -2244,7 +2340,10 @@ code can count, rank and filter exactly. The LLM's job shrank to choosing
 what to compute, and even that choice is checked against the question before
 it runs. With the same 14B model, this raised global exact match from 0.24
 for standard RAG to 0.83--0.85, at the same token cost and a lower median
-latency.
+latency. On held-out questions the gain was smaller (0.66 against 0.19), and
+the misses were concentrated where the structures were thinnest: office
+handbook rows not linked to their office, and question types with few
+development examples.
 
 The remaining errors sit where this structure ends: values stated only in
 prose, conflicts between documents, and opinions that must be inferred from
@@ -2302,8 +2401,10 @@ regular.
 
 \begin{itemize}
   \item \textbf{Development on the test set.} The final configuration was
-  developed on the 89 questions it is scored on, so its accuracy is a
-  development score. No held-out questions were run.
+  developed on the 89 questions it is scored on. On 40 held-out questions
+  its global exact match is 0.656 rather than 0.831, and it misses 2 of 8
+  local questions. The held-out questions share the development templates,
+  so accuracy on new phrasings may be lower still.
   \item \textbf{Format dependence.} The table, record and catalogue parsers
   rely on Markdown tables, bold field labels and YAML front matter. Facts
   stated only in prose are not covered, and documents formatted differently
@@ -2375,7 +2476,9 @@ high-risk.
     record fields and document metadata once at index time, and computing
     answers in code, did: global exact match 0.83--0.85 against 0.24 for
     standard RAG with the same 14B model, with 80 of 89 answers within 45
-    seconds. These are development scores on the test questions.
+    seconds. These are development scores. On 40 held-out questions the
+    figures are 0.66 against 0.19 (19 wins, 4 losses), with 6 of 8 local
+    questions correct against 8 of 8.
   \end{itemize}
   \item \textbf{Software.} An open, tested implementation (145 tests) with a
   one-command experiment.
@@ -2385,9 +2488,10 @@ high-risk.
 \label{sec:future}
 
 \begin{enumerate}
-  \item Write a held-out question set over the same corpus, with gold
-  answers from the ledger, and score the final configuration on it without
-  further changes.
+  \item Link office-handbook rows to their office in the fact table, and
+  fix the held-out failure groups (temporal questions, two-condition
+  filters, version additions), then score on a second, freshly written
+  held-out set with new phrasings, ideally written by someone else.
   \item Extend the fact index to values stated in prose, for example by
   extracting them once at index time with the LLM and checking each against
   its source sentence.
