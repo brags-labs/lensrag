@@ -114,6 +114,12 @@ record_types:                     # doc_type -> regex of words that ask for it
   case_note: '\bcases?\b|\bcourts?\b'
 type_hints:                       # query type -> extra regexes for the keyword classifier
   version_diff: ['\bamend(ed|ment)\b.*\bchang']
+source_roles:                     # conflict scan only: which document types state, update or restate values
+  primary: [contract]             #   the authoritative source (its current version applies)
+  update: [amendment]             #   documents that change a primary value (pending ones do not apply yet;
+                                  #   superseded ones never do; the latest effective one wins)
+  secondary: [standard]           #   restating sources; they never win a disagreement
+                                  # HR: policy_manual_chapter / hr_circular / faq, office_handbook, benefits_summary
 header: >-                        # chunk header; {field} = metadata value or 'unspecified'
   Document: {title_or_id} [{doc_id}] | Type: {doc_type} | Section: {section} |
   Jurisdiction: {jurisdiction} | Parties: {parties} | Entities: {entities}
@@ -133,7 +139,7 @@ Header placeholders: any metadata field name, plus `{title_or_id}`, `{doc_id}`, 
    ```bash
    python -m lensrag.cli build-index --domain my.yaml --corpus my_docs --index-dir artifacts/index_my
    ```
-5. Ask questions. This needs `OPENAI_API_KEY`; the index directory remembers the domain:
+5. Ask questions. This needs an LLM: `LENSRAG_LLM_STACK=local-qwen-14b` for local models, or `ANTHROPIC_API_KEY` / `OPENAI_API_KEY`. The index directory remembers the domain:
    ```bash
    python -m lensrag.cli ask "Which contracts with Acme allow termination on under 60 days notice?" --index-dir artifacts/index_my
    ```

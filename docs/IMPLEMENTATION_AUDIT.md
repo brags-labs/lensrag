@@ -1,6 +1,8 @@
 # LensRAG implementation audit against the capstone PDF
 
-Audit basis: `MTechPESJan25AGrp5_1.pdf`, Section 1.1.1 (Recommended Approach), Figures 1.1–1.2, and Table 3.1. This audit compares those stated steps with the Python source in `lensrag/`.
+> **Historical document.** This audit was written for the first retrieval-only prototype, before the full runtime existed. Every gap it lists has since been implemented in `lensrag/full/`, and answer-level runs have been made with local models; see the README and the report (`docs/report/corpus-rag-project.pdf`) for the current state. It is kept as a record of how the implementation was planned.
+
+Audit basis: the methodology report (`docs/LensRAG_methodology.pdf`), Section 1.1.1 (Recommended Approach), Figures 1.1–1.2, and Table 3.1. This audit compares those stated steps with the Python source in `lensrag/`.
 
 ## Executive finding
 
@@ -63,6 +65,6 @@ The separate `lensrag.full` runtime has now been added. It does not rewrite the 
 - OpenAI-compatible JSON/text LLM adapter (`full/llm.py`).
 - `build-index` and `ask` CLI commands.
 
-The code is unit-tested for index persistence, stale-index detection, entity inventory counts and existing core functions. A complete provider-backed answer run has **not** been executed in this build because it requires installing the optional neural/LLM dependencies, downloading the embedding model and supplying a valid API key. The original methodology audit remains valid for the old experiment runner; the new runtime is the implementation path for the missing stages.
+The code is unit-tested for index persistence, stale-index detection, entity inventory counts and existing core functions. At the time of this audit no provider-backed answer run had been executed. Answer runs with local open-source models were made later (see the README). The original methodology audit remains valid for the old experiment runner; the new runtime is the implementation path for the missing stages.
 
 Remaining engineering/research caveats: Markdown document parsing is heuristic rather than a universal document AST; employee-category metadata is populated only when present in front matter; entity expansion is limited to the ingestion inventory and a configured maximum number of rounds; cross-encoder reranking is optional; LLM verification requires its own labelled evaluation set; and map–reduce completeness depends on retrieval coverage. Record model names/versions, prompts, provider, token/cost usage and convergence telemetry in any final experiment.

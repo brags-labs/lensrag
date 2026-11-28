@@ -1,5 +1,7 @@
 # LensRAG experiment report
 
+> **Retrieval level only.** This report covers the retrieval experiment on all tiers. Answer-level results are in `results/hypotheses.md` (first run) and, for the final configuration, in `results/fast_run_v3/`, `results/baseline_bge_14b/` and `results/heldout_*/`, summarised in the README and the report.
+
 > This report is generated from the retrieval experiment. It does not claim answer accuracy, faithfulness, or LLM conflict-detection performance.
 
 ## Retrieval results by corpus tier

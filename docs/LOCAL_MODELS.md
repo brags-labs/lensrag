@@ -114,9 +114,27 @@ Watch the 3B classifier: if it mislabels many local questions in the full run, c
 - **Presets:** defined in `lensrag/full/routing.py` (`STACKS`).
 - **Cost accounting:** `answers.csv` records tokens per role (`usage_by_role`).
 
+## Fast profile (final configuration)
+The final results use one 14B model for every role and the fast profile (`docs/FULL_RUNTIME_GUIDE.md`):
+
+1. Start Ollama with four parallel slots and keep only one model loaded:
+   ```bash
+   OLLAMA_NUM_PARALLEL=4 OLLAMA_FLASH_ATTENTION=1 OLLAMA_KV_CACHE_TYPE=q8_0 OLLAMA_MAX_LOADED_MODELS=1 ollama serve
+   ```
+2. Label the opinion records once (cached in the index directory):
+   ```bash
+   python -m lensrag.cli label-records --index-dir artifacts/index_L_bge-m3 --llm-stack local-qwen-14b
+   ```
+3. Run the questions:
+   ```bash
+   LENSRAG_FAST=1 python -m lensrag.cli answers --tier L --index-dir artifacts/index_L_bge-m3 --methods lensrag --llm-stack local-qwen-14b --output results/fast_run_v3
+   ```
+
+The 89 development questions take a median of about 5 s each. The slowest are the few that still need passages read (up to a few minutes).
+
 ## Memory and speed on 36 GB
 - **Memory:** `qwen2.5:32b` with a 32k context needs about 29 GB, and the 14B about 15 GB. Both don't fit at once, so Ollama swaps them in and out, which adds a few seconds each time the role changes.
-- **Speed:** expect a full 89-question run to take hours, mostly in LensRAG's extraction and labelling calls (about 3,200 calls). Use `--limit` for checks.
+- **Speed:** with the routed `local-qwen` stack and the default configuration, a full 89-question run takes hours, mostly in LensRAG's extraction and labelling calls (about 3,200 calls). The fast profile above takes minutes. Use `--limit` for checks.
 - **Faster runs:** use `local-qwen-14b`, or lower `sample_size` and `label_passes` in `PipelineConfig`.
 
 ## Reproducibility

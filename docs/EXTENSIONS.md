@@ -1,5 +1,14 @@
 # Extensions to complete the full LensRAG pipeline
 
+> **Status:** this was the to-do list for the first retrieval-only prototype. Everything below except the long-context answer baseline is now implemented in `lensrag/full/` (see `FULL_RUNTIME_GUIDE.md`):
+> - BGE-M3 dense embeddings;
+> - JSON evidence extraction with span checks;
+> - deterministic aggregation;
+> - map–reduce for themes and sentiment, plus index-time record labels;
+> - verification and the conflict scan.
+>
+> The long-context *answer* baseline was not run, because local models have a 32k context; long context is evaluated at the retrieval level. The notes are kept as the design rules the implementation follows.
+
 ## Neural dense embeddings
 Replace or complement TF-IDF with a fixed sentence-transformers model (e.g. `BAAI/bge-m3`). Record model ID, revision, embedding dimension, normalization, chunk text field, and index configuration. Build once per corpus tier and persist vectors. Do not call a TF-IDF vectorizer a neural embedding.
 
