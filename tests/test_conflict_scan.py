@@ -62,6 +62,26 @@ class ConflictScanTests(unittest.TestCase):
         self.assertEqual(unit_kind("₹1,000"), "money")
 
 
+class UpdateStatusTests(unittest.TestCase):
+    def test_superseded_circular_never_applies(self):
+        fs = [fact("POL-v3.0-CH20", "policy_manual_chapter", "Wellbeing allowance", "₹8,000", version="3.0"),
+              fact("CIR-OLD", "hr_circular", "Wellbeing allowance", "₹6,000", status="superseded", previous="₹8,000"),
+              fact("HB-PNQ", "office_handbook", "Wellbeing allowance", "₹8,000", status="")]
+        self.assertEqual(scan(fs, encode, ROLES), [])
+
+    def test_latest_in_force_update_wins_whatever_the_order(self):
+        def facts(order):
+            ups = [fact("CIR-B", "hr_circular", "Wellbeing allowance", "₹12,000", status="in force", previous="₹10,000"),
+                   fact("CIR-A", "hr_circular", "Wellbeing allowance", "₹10,000", status="in force", previous="₹8,000")]
+            ups[0]["effective_date"], ups[1]["effective_date"] = "2026-04-01", "2025-04-01"
+            return ([fact("POL-v3.0-CH20", "policy_manual_chapter", "Wellbeing allowance", "₹8,000", version="3.0")]
+                    + (ups if order else ups[::-1]) + [fact("HB-PNQ", "office_handbook", "Wellbeing allowance", "₹10,000", status="")])
+        for order in (True, False):
+            flags = {f["kind"]: f for f in scan(facts(order), encode, ROLES)}
+            self.assertEqual(flags["update_unapplied"]["applies"]["doc_id"], "CIR-B")
+            self.assertEqual(flags["stale_secondary"]["applies"]["doc_id"], "CIR-B")   # the handbook has CIR-A's value
+
+
 class JudgeTests(unittest.TestCase):
     def test_judge_matches_rows_with_different_labels(self):
         fs = [fact("POL-v3.0-CH40", "policy_manual_chapter", "Paid annual leave (days)", "18 days", version="3.0"),

@@ -202,6 +202,9 @@ class LensRAGPipeline:
         verification=self._verify(question,plan,scopes,answer,records,flags,estimate,synthesis)   # step 8
         if not templated:
             answer=self._finalize(question,answer,records,verification)        # step 9
+        else:
+            note=disclosures(verification)   # step 9 for a templated answer: disclosed in code, no LLM call
+            if note: answer=answer.rstrip()+"\n"+note
         evidence_text=[c.text for c,*_ in hits]
         verification["number_provenance"]=self._number_check(question,answer,records,aggregate,estimate,synthesis,
                                                              evidence_text,[c.doc_id for c,*_ in hits])
@@ -418,8 +421,9 @@ class LensRAGPipeline:
         try:
             pick=_role(self.llm,"extract").json(
                 ("The question lists several yes/no criteria. Pick the table attribute(s) that state each criterion; "
-                 "return JSON {criteria:[{criterion, attribute_ids:[int]}], answerable:boolean}. answerable is false when "
-                 "a criterion has no matching attribute." if criteria else
+                 "return JSON {criteria:[{criterion, attribute_ids:[int], required:boolean}], answerable:boolean}. required is "
+                 "false when the question asks for the criterion to be absent ('a gym but no crèche': the crèche has "
+                 "required false). answerable is false when a criterion has no matching attribute." if criteria else
                  "Pick the table attribute(s) that state the quantity the question asks about. Several ids may be "
                  "the same quantity worded differently in different documents; return all of those. Return JSON "
                  "{attribute_ids:[int], answerable:boolean}. answerable is false when none of them is the asked "
@@ -428,7 +432,7 @@ class LensRAGPipeline:
         except Exception:
             return None
         if criteria:
-            return self._fact_criteria(plan,pick,top,by_attr,cands,entity_scopes)
+            return self._fact_criteria(plan,pick,top,by_attr,cands,entity_scopes,question)
         ids=[i for i in (pick or {}).get("attribute_ids") or [] if isinstance(i,int) and 0<=i<len(top)]
         if not ids or pick.get("answerable") in (False,"false","no"): return None
         chosen=[f for i in ids for f in by_attr[top[i][0]]]
@@ -488,12 +492,36 @@ class LensRAGPipeline:
     _YES=re.compile(r"^\s*(yes|y|true|available|provided|✓|✔)\b",re.I)
     _NO=re.compile(r"^\s*(no|n|false|none|not available|not provided|✗|✘)\b",re.I)
 
-    def _fact_criteria(self, plan, pick, top, by_attr, cands, entity_scopes):
+    _NEGATION=r"\b(no|not|neither|without|lacks?|lacking|nor|excluding|except)\b"
+
+    @classmethod
+    def criterion_wanted(cls, question, criterion, required=None):
+        """Whether a criterion must hold (True) or be absent (False). The question's wording decides
+        when it negates the criterion's words ('a gym but no crèche'); otherwise the model's
+        'required' field, else True."""
+        import unicodedata
+        fold=lambda t:"".join(ch for ch in unicodedata.normalize("NFKD",str(t or "").lower()) if not unicodedata.combining(ch))
+        ql=fold(question)
+        for w in re.findall(r"[^\W\d_]{3,}",fold(criterion)):
+            for m in re.finditer(rf"\b{re.escape(w[:max(3,len(w)-2)])}",ql):
+                before=ql[max(0,m.start()-40):m.start()]
+                tail=re.split(r"\b(and|but|or|with|while|whereas)\b|[,;]",before)[-1]
+                if re.search(cls._NEGATION,tail): return False
+                if re.search(rf"\b(does|do|did|is|are)n[’']t\b",tail): return False
+            if re.search(rf"\b{re.escape(w[:max(3,len(w)-2)])}",ql): return True
+        return required not in (False,"false","no",0)
+
+    def _fact_criteria(self, plan, pick, top, by_attr, cands, entity_scopes, question=""):
         """all_of / any_of over yes/no table facts: the entities whose value for every (any) criterion
-        reads as yes. An entity with a criterion unstated is left out; too few covered -> None."""
-        crit=[[i for i in (c.get("attribute_ids") or []) if isinstance(i,int) and 0<=i<len(top)]
-              for c in (pick or {}).get("criteria") or [] if isinstance(c,dict)]
-        crit=[c for c in crit if c]
+        matches what the question asks (present, or absent for 'no crèche'). An entity with a
+        criterion unstated is left out; too few covered -> None."""
+        raw=[c for c in (pick or {}).get("criteria") or [] if isinstance(c,dict)]
+        crit,wanted=[],[]
+        for c in raw:
+            ids=[i for i in (c.get("attribute_ids") or []) if isinstance(i,int) and 0<=i<len(top)]
+            if ids:
+                crit.append(ids)
+                wanted.append(self.criterion_wanted(question,c.get("criterion") or cands[ids[0]]["attribute"],c.get("required")))
         if len(crit)<2 or (pick or {}).get("answerable") in (False,"false","no"): return None
         per={}   # entity -> [bool per criterion]
         chosen=[]
@@ -504,7 +532,7 @@ class LensRAGPipeline:
                 if not f["specific"] and f["entity"] in specific: continue
                 yes=bool(self._YES.match(str(f["value"]))); no=bool(self._NO.match(str(f["value"])))
                 if not (yes or no): continue
-                per.setdefault(f["entity"],[None]*len(crit))[k]=yes
+                per.setdefault(f["entity"],[None]*len(crit))[k]=(yes==wanted[k])
                 chosen.append(f)
         n_ent=len({sc.entity_value for sc in entity_scopes})
         full={e:v for e,v in per.items() if None not in v}
@@ -513,8 +541,9 @@ class LensRAGPipeline:
         keep=sorted(e for e,v in full.items() if test(v))
         records=[{"entity":f["entity"],"attribute":f["attribute"],"value":f["value"],"value_as_written":f["value"],
                   "evidence_span":f["evidence_span"],"doc_id":f["doc_id"],"version":f["version"],"status":f["status"],
-                  "effective_date":f["effective_date"],"period":f["period"],"scope":f["scope"]} for f in chosen if f["entity"] in keep]
-        aggregate=[{"entity":e,"value":True,"value_as_written":"meets every criterion" if plan.operation=="all_of" else "meets a criterion",
+                  "effective_date":f["effective_date"],"period":f["period"],"scope":f["scope"]} for f in chosen if f["entity"] in full]
+        aggregate=[{"entity":e,"value":True,"value_as_written":("meets every criterion" if plan.operation=="all_of" else "meets a criterion")
+                                      +(" (absent: "+", ".join(str(raw[k].get("criterion") or k) for k,w in enumerate(wanted) if not w)+")" if not all(wanted) else ""),
                     "doc_id":next((r["doc_id"] for r in records if r["entity"]==e),None)} for e in keep]
         hits=[(f["chunk"],0.0,f["scope"],None) for f in {id(f["chunk"]):f for f in chosen}.values()][:20]
         return records,aggregate or None,[],hits,{"mode":"fact table","attributes":[cands[i]["attribute"] for c in crit for i in c],
@@ -897,12 +926,17 @@ class LensRAGPipeline:
         if not isinstance(q,dict) or q.get("answerable") in (False,"false","no",None): return None
         values_of={k:i.get("values") or [] for v in cat.values() for k,i in v["fields"].items()}
         ql=question.lower()
+        numeric={k for v in cat.values() for k,i in v["fields"].items() if i["type"]=="number"}
+        def num_in_question(v):
+            t=str(v).strip(); t=t.rstrip('0').rstrip('.') if re.fullmatch(r"-?\d+\.\d+",t) else t
+            return bool(re.fullmatch(r"-?\d+(\.\d+)?",t)) and bool(re.search(rf"(?<![\d.]){re.escape(t)}(?![\d]|\.\d)",ql))
         def grounded(f):
             """A filter must come from the question: its words or number appear there."""
             if not (isinstance(f,dict) and f.get("field") in allowed and "value" in f): return False
             vals=f["value"] if isinstance(f["value"],list) else [f["value"]]
-            if f.get("op") in ("gte","gt","lte","lt"):
-                return all(re.search(rf"\b{re.escape(str(v).rstrip('0').rstrip('.') if '.' in str(v) else str(v))}\b",ql) for v in vals)
+            if f.get("op") in ("gte","gt","lte","lt") or f["field"] in numeric:
+                # a number the question states ('CSAT 3', 'at least 8'): any comparison, equality included
+                return all(num_in_question(v) for v in vals)
             options=values_of.get(f["field"]) or []
             # a word most of the field's values share ('helpdesk' in every 'X (HR Helpdesk, India)') identifies nothing
             common={w for w,n in Counter(w for o in options for w in set(re.findall(r"[a-z]{4,}",o.lower()))).items()
@@ -928,7 +962,18 @@ class LensRAGPipeline:
             f["value"]=snapped if isinstance(f["value"],list) else snapped[0]
             if f.get("op")=="contains" and f["value"] in (values_of.get(f["field"]) or []): f["op"]="eq"
             return True
-        numeric={k for v in cat.values() for k,i in v["fields"].items() if i["type"]=="number"}
+        def stated(f):
+            """A rejected numeric condition the question states ('a CSAT of 3', read as CSAT 4): the
+            condition is real but its value is wrong, and dropping it would answer a broader question,
+            so the record path gives up instead. Rejected word values are dropped: they are mostly
+            invented or put on the wrong field ('work_mode contains policy')."""
+            if not isinstance(f,dict) or "value" not in f or f.get("field") not in numeric: return False
+            vals=f["value"] if isinstance(f["value"],list) else [f["value"]]
+            if any(num_in_question(v) for v in vals): return True
+            field_words=[w for w in re.findall(r"[a-z]{3,}",str(f["field"]).replace("_"," ").lower()) if w not in ("field","value")]
+            if not field_words: return False
+            near=rf"\b{re.escape(field_words[0])}\w*(\W+[a-z]+){{0,3}}?\W+(?!(19|20)\d\d\b)\d+(\.\d+)?\b(?!\s*(january|february|march|april|may|june|july|august|september|october|november|december))"
+            return bool(re.search(near,ql))
         def as_ranges(fl):
             """'likelihood in 9,10' on a numeric field: the range gte 9, lte 10 (a run of whole numbers)."""
             out=[]
@@ -943,8 +988,15 @@ class LensRAGPipeline:
                         continue
                 out.append(f)
             return out
-        clean=lambda fl:[f for f in as_ranges(fl) if grounded(f)]
+        essential_dropped=[]
+        def clean(fl):
+            kept=[]
+            for f in as_ranges(fl):
+                if grounded(f): kept.append(f)
+                elif stated(f): essential_dropped.append(f)
+            return kept
         q["filters"]=clean(q.get("filters")); q["condition"]=clean(q.get("condition")); q["minus_condition"]=clean(q.get("minus_condition"))
+        if essential_dropped: return None   # cannot express a stated condition: another path answers
         cond_keys={json.dumps(f,sort_keys=True,default=str) for f in q["condition"]+q["minus_condition"]}
         q["filters"]=[f for f in q["filters"] if json.dumps(f,sort_keys=True,default=str) not in cond_keys]   # a condition repeated as a filter
         if q["minus_condition"] and not q["condition"]:
@@ -1110,7 +1162,9 @@ class LensRAGPipeline:
 
     # --- step 8: verification ---------------------------------------------------------------
     def _verify(self,q,plan,scopes,answer,records,flags,estimate=None,synthesis=None):
-        expected=[s.label for s in scopes] if plan.qtype!="local" else []
+        # every record in scope read from its fields, or one row per document: coverage is not partial
+        whole=(estimate or {}).get("kind")=="fields" or any(r.get("scope")=="catalogue" for r in records)
+        expected=[s.label for s in scopes] if plan.qtype!="local" and not whole else []
         coverage=completeness_report([{"entity":r.get("scope")} for r in records],expected)
         conflicts=find_conflicts(records) if plan.operation!="map_reduce" and not estimate else []
         judge=_role(self.llm,"verify").json("Check whether each answer claim is supported by supplied evidence spans and doc IDs. Return JSON {supported:boolean, unsupported_claims:[], notes:string}. Be conservative.",json.dumps({"question":q,"answer":answer,"records":records[:200]},default=str)) if self.config.llm_verify else {"skipped":"llm_verify off: NLI and number provenance only"}
@@ -1138,6 +1192,38 @@ class LensRAGPipeline:
                              "superseded or pending values, or unsupported claims from verification. Do not hide uncertainty and "
                              "do not add numbers that are not in the draft.",
                              json.dumps({"question":q,"draft_answer":answer,"evidence_records":records,"verification":verification},default=str))
+
+
+def disclosures(verification):
+    """What a templated answer must state from verification: missing coverage, conflicts,
+    superseded or pending values, unsupported claims and unstated uncertainty. '' when none."""
+    v=verification or {}; out=[]
+    cov=v.get("coverage") or {}
+    if cov.get("expected_count") and not cov.get("complete", True):
+        miss=cov.get("missing_entities") or []
+        out.append(f"Incomplete coverage: no evidence for {len(miss)} of {cov['expected_count']} scopes"
+                   +(f" ({', '.join(map(str,miss[:8]))}{', ...' if len(miss)>8 else ''})" if miss else "")+".")
+    def key(f):
+        k=f.get("key"); return ", ".join(f"{x}" for x in k.values() if x) if isinstance(k,dict) else str(k or "")
+    for f in v.get("conflicts") or []:
+        if f.get("kind")=="conflict":
+            out.append(f"Conflict: {key(f)} is stated as {' / '.join(map(str,f.get('values') or []))}"
+                       +f" in {', '.join(sorted({str(x.get('doc_id')) for x in f.get('sources') or [] if x.get('doc_id')}))}.")
+    for f in v.get("version_resolution") or []:
+        kind=str(f.get("kind") or "")
+        if not kind: continue
+        chosen=(f.get("chosen") or {}); other=(f.get("other") or {})
+        detail=f" (used {chosen.get('value')} [{chosen.get('doc_id')}]" if chosen else ""
+        detail+=(f"; other value {other.get('value')} [{other.get('doc_id')}]" if other else "")+(")" if chosen else "")
+        out.append(f"{kind.replace('_',' ').capitalize()}: {key(f)}{detail}.")
+    cs=v.get("claim_support") or {}
+    if isinstance(cs,dict) and (cs.get("supported") is False or cs.get("unsupported_claims")):
+        claims=[str(c) for c in cs.get("unsupported_claims") or []]
+        out.append("Not supported by the evidence: "+("; ".join(claims[:5]) if claims else "the verifier rejected the answer")+".")
+    for p in (v.get("uncertainty") or {}).get("problems") or []:
+        out.append(f"Uncertainty not stated: {p}.")
+    out=list(dict.fromkeys(out))
+    return ("Verification notes:\n"+"\n".join("- "+o for o in out)) if out else ""
 
 
 def _is_yes(v):

@@ -162,17 +162,28 @@ def scan(facts, encode, roles, global_values=("ALL", "GLOBAL", ""), active=("cur
     if pending_judge:
         matched += [(f, p) for (f, _), p in zip(pending_judge, judge(pending_judge)) if p is not None]
 
-    # updates first: an in-force update replaces the primary value for the secondary check below
-    applies = {}                                      # id(primary fact) -> the in-force update fact
+    # updates first: an in-force update replaces the primary value for the secondary check below.
+    # Only active updates apply (a superseded or withdrawn circular never does), and when several
+    # change the same primary fact the latest effective one wins, whatever the traversal order.
+    in_force = defaultdict(list)                      # id(primary fact) -> [(update, primary)]
     for f, p in matched:
-        if f["doc_type"] not in update or _same(f["number"], p["number"]):
-            continue                                  # not an update, or the primary source already states it
+        if f["doc_type"] not in update:
+            continue
+        status = str(f.get("status") or "").lower()
+        if status in pending:
+            if not _same(f["number"], p["number"]):
+                flags.append(_flag("update_pending", [p, f], p, f["_scope"], pending_value=f["value"]))
+        elif status in active:
+            in_force[id(p)].append((f, p))
+    applies = {}                                      # id(primary fact) -> the in-force update fact
+    for pid, ups in in_force.items():
+        f, p = max(ups, key=lambda fp: (str(fp[0].get("effective_date") or ""), str(fp[0]["doc_id"])))
+        if _same(f["number"], p["number"]):
+            continue                                  # the primary source already states the latest update
         before = number(f.get("previous_value")) if f.get("previous_value") else None
-        if str(f.get("status") or "").lower() in pending:
-            flags.append(_flag("update_pending", [p, f], p, f["_scope"], pending_value=f["value"]))
-        elif before is None or _same(before, p["number"]):
-            flags.append(_flag("update_unapplied", [p, f], f, f["_scope"]))
-            applies[id(p)] = f
+        if before is None or _same(before, p["number"]) or len(ups) > 1:
+            flags.append(_flag("update_unapplied", [p] + [u for u, _ in ups], f, f["_scope"]))
+            applies[pid] = f
     for f, p in matched:
         if f["doc_type"] not in secondary:
             continue

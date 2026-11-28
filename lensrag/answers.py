@@ -13,7 +13,7 @@ Methods:
   lensrag             the full LensRAG pipeline (lensrag.full), answer converted to the gold format
 """
 from __future__ import annotations
-import ast, json, os, re, time
+import ast, hashlib, json, os, re, time
 from pathlib import Path
 import pandas as pd
 from .aggregation import normalize_label
@@ -355,6 +355,33 @@ def reformat_estimates(path, questions):
     return changed
 
 
+def run_fingerprint(settings):
+    """A short hash of everything that decides a run's answers (dataclasses included)."""
+    import dataclasses
+    def plain(x):
+        if dataclasses.is_dataclass(x) and not isinstance(x, type):
+            return {k: plain(v) for k, v in sorted(dataclasses.asdict(x).items())}
+        if isinstance(x, dict):
+            return {str(k): plain(v) for k, v in sorted(x.items(), key=lambda kv: str(kv[0]))}
+        if isinstance(x, (list, tuple, set)):
+            return [plain(v) for v in (sorted(x, key=str) if isinstance(x, set) else x)]
+        return x if isinstance(x, (str, int, float, bool, type(None))) else str(x)
+    return hashlib.sha256(json.dumps(plain(settings), sort_keys=True, ensure_ascii=False).encode("utf-8")).hexdigest()[:16]
+
+
+def check_resume(config_path, fingerprint):
+    """Refuse to resume into a folder written by a different experiment (or by an older version
+    that recorded no fingerprint)."""
+    try:
+        old = json.loads(Path(config_path).read_text(encoding="utf-8")).get("fingerprint")
+    except (OSError, ValueError):
+        old = None
+    if old != fingerprint:
+        raise ValueError(f"{Path(config_path).parent}: existing answers come from a different run "
+                         f"(fingerprint {old or 'missing'}, this run {fingerprint}); "
+                         "use a new output folder or resume=False to start again")
+
+
 def run_answers(zip_path, extract_dir, output, tier="L", methods=("rag_topk", "long_context_128k", "lensrag"),
                 top_k=10, llm=None, llm_model=None, llm_provider=None, llm_stack=None, domain="hr", index_dir=None, limit=None, store_dir=None,
                 lexical_fallback=False, qids=None, resume=True):
@@ -363,6 +390,8 @@ def run_answers(zip_path, extract_dir, output, tier="L", methods=("rag_topk", "l
     Each answer is appended to answers.csv as soon as it is scored. With `resume`, answers
     already in the file without an error are skipped, so an interrupted run continues where it
     stopped. Standard RAG uses the same embedding model as LensRAG when the stack sets one.
+    A resumed run must have the same fingerprint (corpus, questions, models and settings) as the
+    run that wrote the file; otherwise it stops rather than mix answers from two experiments.
     """
     from .data import ensure_extracted, load_documents, load_gold, chunk_document
     from .domain import load_domain
@@ -408,8 +437,17 @@ def run_answers(zip_path, extract_dir, output, tier="L", methods=("rag_topk", "l
         pipe.llm = llm
     out = Path(output); out.mkdir(parents=True, exist_ok=True)
     path = out / "answers.csv"
+    fingerprint = run_fingerprint({
+        "tier": tier, "domain": dom,
+        "corpus": sorted((d.doc_id, hashlib.sha256(d.text.encode("utf-8")).hexdigest()) for d in docs),
+        "questions": hashlib.sha256(json.dumps(load_gold(corpus), sort_keys=True, ensure_ascii=False,
+                                               default=str).encode("utf-8")).hexdigest(),
+        "llm": [type(llm).__name__, getattr(llm, "model", None), getattr(llm, "effort", None), llm_stack],
+        "top_k": top_k, "lexical_fallback": bool(lexical_fallback), "index_dir": str(index_dir) if index_dir else None,
+        "rag_topk_embedding": stack_embedding, "lensrag_config": cfg})
     done = set()
     if resume and path.exists():
+        check_resume(out / "answers_config.json", fingerprint)
         prev = pd.read_csv(path)
         ok = prev[prev.error.isna() | (prev.error.astype(str) == "")] if "error" in prev else prev
         prev = ok  # failed answers are retried
@@ -423,7 +461,7 @@ def run_answers(zip_path, extract_dir, output, tier="L", methods=("rag_topk", "l
             "rag_topk_retrieval": f"hybrid BM25 + {stack_embedding}" if stack_embedding else "hybrid BM25 + TF-IDF",
             "lensrag_components": {k: getattr(cfg, k) for k in ("embedding_model", "reranker_model", "spacy_model",
                                                                 "nli_model", "sentiment_model")},
-            "lensrag_index": str(index_dir) if index_dir else "built in memory"}
+            "lensrag_index": str(index_dir) if index_dir else "built in memory", "fingerprint": fingerprint}
     (out / "answers_config.json").write_text(json.dumps(meta, indent=2, default=str), encoding="utf-8")
     rows = []
     # Method by method, so consecutive calls share a prompt prefix (the long-context corpus)

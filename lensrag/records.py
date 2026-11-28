@@ -184,6 +184,17 @@ def _match(r, flt):
         except (TypeError, ValueError):
             return False
         return x is not None and {"gte": x >= w, "gt": x > w, "lte": x <= w, "lt": x < w}[op]
+    def num(v):
+        try:
+            return float(str(v).strip())
+        except (TypeError, ValueError):
+            return None
+    x = r.num(k)
+    if x is not None and op in ("eq", "ne", "in"):
+        wants = [num(v) for v in (want if isinstance(want, list) else [want])]
+        if wants and None not in wants:   # 'CSAT 3' against '3/5': compare the numbers
+            hit = any(abs(x - v) < 1e-9 for v in wants)
+            return hit if op != "ne" else not hit
     h, w = str(have).strip().lower(), str(want).strip().lower()
     if op == "in":
         return h in [str(x).strip().lower() for x in (want or [])]
